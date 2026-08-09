@@ -9,11 +9,17 @@ publish = false
 [lib]
 name = "hypster"
 path = "src/lib.rs"
+test = false
 
 [[bin]]
 name = "hypster"
 path = "src/main.rs"
 test = false
+required-features = ["bare-metal-bin"]
+
+[features]
+default = []
+bare-metal-bin = []
 
 [dependencies]
 hv-boot-abi = { workspace = true }

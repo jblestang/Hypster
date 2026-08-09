@@ -57,11 +57,7 @@ fn parse_output_flag(args: &[String]) -> Result<PathBuf, String> {
 }
 
 fn run_tests() -> Result<(), String> {
-    run_cmd(
-        workspace_root(),
-        "cargo",
-        &["test", "--workspace", "--exclude", "hv-loader", "--exclude", "hypster"],
-    )
+    run_cmd(workspace_root(), "cargo", &["test", "--workspace"])
 }
 
 fn run_build() -> Result<(), String> {

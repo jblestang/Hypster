@@ -5,7 +5,6 @@
 
 extern crate alloc;
 
-mod bump_alloc;
 pub mod entry;
 mod plans;
 

@@ -1,26 +1,22 @@
-//! UEFI loader entry for Hypster (Gate C boot handoff).
+//! UEFI loader binary entry for Hypster.
 
 #![no_main]
 #![no_std]
-#![allow(unsafe_code)] // UEFI memory map, handoff jump, and firmware allocations.
+#![allow(unsafe_code)] // UEFI allocator init and firmware entry.
 
 extern crate alloc;
-
-mod boot_info;
-mod handoff;
 
 use uefi::allocator::Allocator;
 use uefi::prelude::*;
 use uefi::table::boot::MemoryType;
 use uefi::table::cfg::{ACPI2_GUID, ACPI_GUID};
 
-use boot_info::{build_boot_info_blob, load_hypervisor_image};
-use handoff::jump_to_hypervisor;
+use hv_loader::boot_info::{build_boot_info_blob, load_hypervisor_image};
+use hv_loader::handoff::jump_to_hypervisor;
 
 #[global_allocator]
 static GLOBAL: Allocator = Allocator;
 
-#[cfg(not(test))]
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {
     loop {

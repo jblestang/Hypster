@@ -3,10 +3,15 @@
 use core::alloc::{GlobalAlloc, Layout};
 use core::cell::UnsafeCell;
 use core::mem::MaybeUninit;
+use core::ptr::NonNull;
 
 const HEAP_SIZE: usize = 64 * 1024;
 
-static mut HEAP: [MaybeUninit<u8>; HEAP_SIZE] = [MaybeUninit::uninit(); HEAP_SIZE];
+struct HeapStorage(UnsafeCell<[MaybeUninit<u8>; HEAP_SIZE]>);
+
+unsafe impl Sync for HeapStorage {}
+
+static HEAP: HeapStorage = HeapStorage(UnsafeCell::new([MaybeUninit::uninit(); HEAP_SIZE]));
 
 struct BumpInner {
     next: usize,
@@ -19,6 +24,7 @@ unsafe impl Sync for BumpAllocator {}
 
 impl BumpAllocator {
     /// Creates a new bump allocator in its initial state.
+    #[must_use]
     pub const fn new() -> Self {
         Self(UnsafeCell::new(BumpInner { next: 0 }))
     }
@@ -34,12 +40,10 @@ unsafe impl GlobalAlloc for BumpAllocator {
             return core::ptr::null_mut();
         }
         inner.next = end;
-        HEAP.as_mut_ptr().cast::<u8>().add(aligned)
+        // SAFETY: `HEAP` is only accessed through this single-threaded bump allocator.
+        let heap = NonNull::new_unchecked(HEAP.0.get().cast::<u8>());
+        heap.as_ptr().add(aligned)
     }
 
     unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {}
 }
-
-#[global_allocator]
-#[cfg(not(test))]
-static ALLOCATOR: BumpAllocator = BumpAllocator::new();

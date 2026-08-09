@@ -17,12 +17,17 @@ jobs:
         with:
           toolchain: 1.85.0
           components: rustfmt, clippy
+          targets: x86_64-unknown-uefi,x86_64-unknown-none
       - name: fmt
         run: cargo fmt --all --check
-      - name: clippy
-        run: cargo clippy --workspace --exclude hv-loader --exclude hypster --all-targets --all-features -- -D warnings
+      - name: clippy (host)
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: clippy (hv-loader uefi)
+        run: cargo clippy -p hv-loader --target x86_64-unknown-uefi --all-features -- -D warnings
+      - name: clippy (hypster bare-metal)
+        run: cargo clippy -p hypster --target x86_64-unknown-none --all-features -- -D warnings
       - name: test
-        run: cargo test --workspace --exclude hv-loader --exclude hypster
+        run: cargo test --workspace
       - name: validate config
         run: cargo xtask config validate configs/qemu.yaml
       - name: generate config

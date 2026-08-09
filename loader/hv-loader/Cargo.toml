@@ -6,10 +6,19 @@ edition.workspace = true
 license.workspace = true
 publish = false
 
+[lib]
+name = "hv_loader"
+path = "src/lib.rs"
+
 [[bin]]
 name = "hv-loader"
 path = "src/main.rs"
 test = false
+required-features = ["uefi-bin"]
+
+[features]
+default = []
+uefi-bin = []
 
 [dependencies]
 hv-boot-abi = { workspace = true }
