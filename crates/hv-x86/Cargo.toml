@@ -1,0 +1,13 @@
+[package]
+name = "hv-x86"
+description = "x86_64 intrinsics wrappers for the Hypster hypervisor"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[features]
+default = []
+
+[lints]
+workspace = true

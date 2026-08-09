@@ -199,6 +199,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "hv-cpu"
+version = "0.1.0"
+dependencies = [
+ "hv-types",
+ "hv-x86",
+]
+
+[[package]]
 name = "hv-cpu-topology"
 version = "0.1.0"
 dependencies = [
@@ -262,6 +270,10 @@ dependencies = [
  "hv-memory",
  "hv-types",
 ]
+
+[[package]]
+name = "hv-x86"
+version = "0.1.0"
 
 [[package]]
 name = "hypster"
