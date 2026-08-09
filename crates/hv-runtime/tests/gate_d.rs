@@ -10,7 +10,7 @@ use hv_guest_abi::layout;
 use hv_guest_abi::GuestBootInfo;
 use hv_ipc::{init_ring, try_pop, try_push, validate_ring, IpcError};
 use hv_partition::{build_guest_boot_info, gate_d_plans_from_resolved};
-use hv_runtime::{initialize_gate_d, DatapathEngine, GateCPlans, MmioDispatch};
+use hv_runtime::{assign_ipc_host_backing, initialize_gate_d, DatapathEngine, GateCPlans, MmioDispatch};
 use hv_types::{HostPhysAddr, VcpuId, VmId};
 
 const IPC_RING_BYTES: usize = 524_328;
@@ -189,6 +189,31 @@ fn gate_d_gate_c_plans_remain_compatible() {
 }
 
 #[test]
+fn gate_d_assign_ipc_backing_aligns_ept_ipc_host_phys() {
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../configs/qemu.yaml");
+    let raw = read_yaml_file(path).expect("read config");
+    let compiled = compile_config(raw).expect("compile config");
+    let observed = qemu_validation_observed().expect("fixture");
+    let platform = resolve_platform(&compiled.intent, &observed).expect("resolve");
+    let mut plans = gate_d_plans_from_resolved(&platform);
+
+    let mut ipc_backing = vec![0u8; 524_328 * plans.ipc_channels.len()];
+    assign_ipc_host_backing(&mut plans, &mut ipc_backing).expect("assign");
+
+    for channel in &plans.ipc_channels {
+        let mut mapping_count = 0usize;
+        for partition in &plans.gate_c.ept.partitions {
+            for mapping in &partition.mappings {
+                if mapping.host_phys == channel.host_base {
+                    mapping_count += 1;
+                }
+            }
+        }
+        assert!(mapping_count >= 2, "channel {} should map producer and consumer", channel.name);
+    }
+}
+
+#[test]
 fn gate_d_vmcs_includes_ept_violation_decode_fields() {
     use hv_vmx::vmcs::{EXIT_QUALIFICATION, GUEST_PHYSICAL_ADDRESS, VM_EXIT_INSTRUCTION_LEN};
     assert_ne!(GUEST_PHYSICAL_ADDRESS, 0);
@@ -206,7 +231,6 @@ fn gate_d_e2e_datapath_moves_payload_through_engine() {
     let mut plans = gate_d_plans_from_resolved(&platform);
 
     use hv_ipc::compute_shared_bytes;
-    use hv_runtime::assign_ipc_host_backing;
 
     let total_backing: usize = plans
         .ipc_channels
