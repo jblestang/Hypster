@@ -1,0 +1,16 @@
+[package]
+name = "hv-config"
+description = "YAML configuration compiler for Hypster"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "hv-config"
+path = "src/main.rs"
+
+[dependencies]
+hv-config-model = { workspace = true }
+
+[lints]
+workspace = true

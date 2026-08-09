@@ -1,0 +1,19 @@
+[package]
+name = "hv-types"
+description = "Strongly typed identifiers and addresses for the Hypster hypervisor"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[features]
+default = []
+std = []
+
+[dependencies]
+
+[dev-dependencies]
+proptest = { workspace = true }
+
+[lints]
+workspace = true

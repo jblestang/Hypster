@@ -1,0 +1,114 @@
+# Hypster validation configuration for QEMU/OVMF.
+# This file is the single source of truth for partitioning, devices, IPC,
+# platform requirements, and QEMU launch parameters.
+
+version: 1
+name: qemu-validation
+
+platform:
+  requirements:
+    arch: x86_64
+    vmx: required
+    ept: required
+    vtd: required
+    min_physical_cores: 3
+    smt_policy: exclusive_core
+    min_ram_gib: 4
+    interrupt_remapping: required
+    x2apic: preferred
+    invariant_tsc: preferred
+    vpid: preferred
+    vmx_preemption_timer: optional
+    nx: required
+    page_sizes:
+      - 4096
+      - 2097152
+
+partitions:
+  - name: in
+    vcpus: 1
+    memory_gib: 1
+    image: guests/guest-in/target/x86_64-unknown-none/release/guest-in
+    devices:
+      - kind: e1000
+        bdf: "0000:00:03.0"
+    stack:
+      smoltcp: true
+      protocol: udp_ipv4
+
+  - name: mid
+    vcpus: 1
+    memory_gib: 2
+    image: guests/guest-mid/target/x86_64-unknown-none/release/guest-mid
+
+  - name: out
+    vcpus: 1
+    memory_gib: 1
+    image: guests/guest-out/target/x86_64-unknown-none/release/guest-out
+    devices:
+      - kind: e1000
+        bdf: "0000:00:04.0"
+
+ipc:
+  - name: in_to_mid
+    producer: in
+    consumer: mid
+    direction: unidirectional
+    slot_count: 256
+    slot_size: 2048
+    queue_full_policy: drop_tail
+
+  - name: mid_to_out
+    producer: mid
+    consumer: out
+    direction: unidirectional
+    slot_count: 256
+    slot_size: 2048
+    queue_full_policy: drop_tail
+
+security:
+  require_config_hash: true
+  ipc_corruption_policy: stop_partition
+  ept_violation_policy: stop_partition
+  iommu_fault_policy: stop_partition
+
+performance:
+  benchmark:
+    protocol: udp_ipv4
+    frame_size: 1514
+    payload_size: 1472
+    throughput_metric: udp_payload_bytes
+    warmup_seconds: 10
+    measurement_seconds: 30
+    runs: 5
+    max_loss_ratio: 0.001
+
+boot:
+  loader: loader/hv-loader/target/x86_64-unknown-uefi/release/hv-loader.efi
+  hypervisor: hypervisor/target/x86_64-unknown-none/release/hypster
+  exit_boot_services: true
+
+qemu:
+  machine: q35
+  cpu: host
+  smp:
+    cpus: 4
+    cores: 4
+    threads: 1
+  memory_mib: 4096
+  accel: tcg
+  ovmf: /opt/OVMF/OVMF_CODE.fd
+  netdevs:
+    - id: net0
+      kind: user
+      hostfwd: "127.0.0.1:5001-:5001"
+    - id: net1
+      kind: user
+      hostfwd: "127.0.0.1:5002-:5002"
+  devices:
+    - kind: e1000
+      bdf: "0000:00:03.0"
+      netdev: net0
+    - kind: e1000
+      bdf: "0000:00:04.0"
+      netdev: net1

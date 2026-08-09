@@ -1,0 +1,25 @@
+[package]
+name = "hv-config-model"
+description = "Configuration model, validation, and static platform IR for Hypster"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[features]
+default = ["std"]
+std = ["dep:serde", "dep:serde_yaml", "dep:sha2", "dep:hex", "dep:thiserror", "hv-types/std"]
+
+[dependencies]
+hv-types = { workspace = true }
+serde = { workspace = true, optional = true }
+serde_yaml = { workspace = true, optional = true }
+sha2 = { workspace = true, optional = true }
+hex = { workspace = true, optional = true }
+thiserror = { workspace = true, optional = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+
+[lints]
+workspace = true
