@@ -2,7 +2,10 @@
 
 use hv_ept::EptMemoryType;
 use hv_types::{GuestPhysAddr, HostPhysAddr, VmId};
-use hv_vmx::vmcs::{HOST_CR0, HOST_CR3, HOST_CR4, HOST_RIP, HOST_RSP, VM_EXIT_REASON};
+use hv_vmx::vmcs::{
+    EXIT_QUALIFICATION, GUEST_PHYSICAL_ADDRESS, GUEST_RIP, HOST_CR0, HOST_CR3, HOST_CR4, HOST_RIP,
+    HOST_RSP, VM_EXIT_INSTRUCTION_LEN, VM_EXIT_REASON,
+};
 use hv_vmx::{
     build_guest_vmcs_fields, vmclear, vmlaunch, vmptrld, vmread, vmresume, vmwrite,
     GuestLaunchPlan, VmcsFieldWrite, VmcsRegion, VmxCapabilities,
@@ -11,7 +14,9 @@ use hv_vmx::{
 use crate::error::RuntimeError;
 use crate::launch::{plan_partition_launches, DEFAULT_GUEST_BOOT_INFO_GPA};
 use crate::load::load_elf_into_guest_ram;
+use crate::mmio::MmioDispatch;
 use crate::partition::GateDPlans;
+use crate::vmexit::{handle_mmio_exit, reason, MmioExitInfo};
 
 /// Host state captured before VMLAUNCH.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -67,6 +72,77 @@ pub unsafe fn read_vmexit_reason() -> Result<u32, RuntimeError> {
 /// Caller must have a valid guest VMCS loaded.
 pub unsafe fn resume_guest() -> Result<(), RuntimeError> {
     vmresume().map_err(RuntimeError::Vmx)
+}
+
+/// Advances the guest instruction pointer after emulating an exit.
+///
+/// # Safety
+///
+/// Caller must be in VMX root operation with a valid guest VMCS loaded.
+pub unsafe fn advance_guest_rip(instruction_len: u8) -> Result<(), RuntimeError> {
+    let rip = vmread(GUEST_RIP).map_err(RuntimeError::Vmx)?;
+    vmwrite(GUEST_RIP, rip + instruction_len as u64).map_err(RuntimeError::Vmx)
+}
+
+/// Reads the VM-exit instruction length from the active VMCS.
+///
+/// # Safety
+///
+/// Caller must be in VMX root operation with a valid guest VMCS loaded.
+pub unsafe fn read_vmexit_instruction_len() -> Result<u8, RuntimeError> {
+    let len = vmread(VM_EXIT_INSTRUCTION_LEN).map_err(RuntimeError::Vmx)? as u32;
+    Ok(len as u8)
+}
+
+/// Reads the guest-physical address associated with the current VM-exit.
+///
+/// # Safety
+///
+/// Caller must be in VMX root operation with a valid guest VMCS loaded.
+pub unsafe fn read_vmexit_guest_phys() -> Result<GuestPhysAddr, RuntimeError> {
+    let gpa = vmread(GUEST_PHYSICAL_ADDRESS).map_err(RuntimeError::Vmx)?;
+    Ok(GuestPhysAddr::new(gpa))
+}
+
+/// Handles one EPT-violation MMIO exit against the partition dispatcher.
+///
+/// # Safety
+///
+/// Caller must be in VMX root operation with a valid guest VMCS loaded.
+pub unsafe fn handle_ept_mmio_exit(
+    dispatch: &mut MmioDispatch,
+    write_value: u32,
+) -> Result<(), RuntimeError> {
+    let guest_phys = read_vmexit_guest_phys()?;
+    let qual = vmread(EXIT_QUALIFICATION).map_err(RuntimeError::Vmx)?;
+    let is_write = (qual & (1 << 1)) != 0;
+    let info = MmioExitInfo { guest_phys, access_size: 4, is_write };
+    let action = handle_mmio_exit(dispatch, info, write_value)?;
+    let advance = match action {
+        crate::vmexit::MmioExitAction::Read { advance, .. } => advance,
+        crate::vmexit::MmioExitAction::Write { advance } => advance,
+        crate::vmexit::MmioExitAction::Unhandled { .. } => {
+            return Err(RuntimeError::TableRegionUnavailable);
+        }
+    };
+    advance_guest_rip(advance)
+}
+
+/// Dispatches one VM-exit for the IN partition, returning true when the guest halted.
+///
+/// # Safety
+///
+/// Caller must be in VMX root operation with a valid guest VMCS loaded.
+pub unsafe fn dispatch_in_guest_vmexit(dispatch: &mut MmioDispatch) -> Result<bool, RuntimeError> {
+    let exit_reason = read_vmexit_reason()?;
+    match exit_reason {
+        12 => Ok(true),
+        reason::EPT_VIOLATION => {
+            handle_ept_mmio_exit(dispatch, 0)?;
+            Ok(false)
+        }
+        _ => Err(RuntimeError::TableRegionUnavailable),
+    }
 }
 
 /// Programs VMCS fields and executes VMLAUNCH for one guest.

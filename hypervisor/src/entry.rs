@@ -33,10 +33,12 @@ pub unsafe extern "C" fn hypster_entry(boot_info: *const BootInfo) -> ! {
             serial::write_str("hypster: gate-d running\n");
             #[cfg(feature = "hardware")]
             if report.gate_c.vmx_enabled {
-                // SAFETY: Gate C init enabled VMX and installed EPT/VMCS regions.
-                if unsafe { launch::try_launch_in_guest(&plans) }.is_err() {
-                    serial::write_str("hypster: vmlaunch skipped\n");
+                // SAFETY: Gate C init enabled VMX; `plans` outlives launch or datapath handoff.
+                let launched = unsafe { launch::try_launch_in_guest(&plans, report) };
+                if launched {
+                    core::hint::unreachable_unchecked();
                 }
+                serial::write_str("hypster: vmlaunch skipped\n");
             }
             datapath::run_steady_state_loop(&plans, report);
         }

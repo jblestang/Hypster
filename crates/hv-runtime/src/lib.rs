@@ -23,8 +23,9 @@ pub use datapath::{
 };
 pub use error::RuntimeError;
 pub use execute::{
-    capture_host_launch_context, launch_plan_for_vm, read_vmexit_reason, resume_guest,
-    stage_guest_image, vmlaunch_guest, HostLaunchContext,
+    advance_guest_rip, capture_host_launch_context, dispatch_in_guest_vmexit, handle_ept_mmio_exit,
+    launch_plan_for_vm, read_vmexit_guest_phys, read_vmexit_instruction_len, read_vmexit_reason,
+    resume_guest, stage_guest_image, vmlaunch_guest, HostLaunchContext,
 };
 pub use init::{initialize, initialize_gate_d, GateCPlans, GateDInitReport, RuntimeInitReport};
 pub use launch::{

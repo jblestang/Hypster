@@ -88,6 +88,10 @@ pub const VM_ENTRY_CONTROLS: u32 = vmcs_field(VMCS_WIDTH_32, 0x4012);
 pub const VM_EXIT_REASON: u32 = vmcs_field(VMCS_WIDTH_32, 0x4402);
 /// VM-exit instruction length.
 pub const VM_EXIT_INSTRUCTION_LEN: u32 = vmcs_field(VMCS_WIDTH_32, 0x440C);
+/// Guest-physical address at VM-exit.
+pub const GUEST_PHYSICAL_ADDRESS: u32 = vmcs_field(VMCS_WIDTH_64, 0x2400);
+/// Exit qualification for the current VM-exit.
+pub const EXIT_QUALIFICATION: u32 = vmcs_field(VMCS_WIDTH_64, 0x6402);
 
 /// 4 KiB-aligned VMCS region.
 #[repr(C, align(4096))]

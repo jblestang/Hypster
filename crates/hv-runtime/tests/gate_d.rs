@@ -189,6 +189,14 @@ fn gate_d_gate_c_plans_remain_compatible() {
 }
 
 #[test]
+fn gate_d_vmcs_includes_ept_violation_decode_fields() {
+    use hv_vmx::vmcs::{EXIT_QUALIFICATION, GUEST_PHYSICAL_ADDRESS, VM_EXIT_INSTRUCTION_LEN};
+    assert_ne!(GUEST_PHYSICAL_ADDRESS, 0);
+    assert_ne!(EXIT_QUALIFICATION, 0);
+    assert_ne!(VM_EXIT_INSTRUCTION_LEN, 0);
+}
+
+#[test]
 fn gate_d_e2e_datapath_moves_payload_through_engine() {
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../configs/qemu.yaml");
     let raw = read_yaml_file(path).expect("read config");
