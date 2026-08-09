@@ -10,7 +10,9 @@ use hv_guest_abi::layout;
 use hv_guest_abi::GuestBootInfo;
 use hv_ipc::{init_ring, try_pop, try_push, validate_ring, IpcError};
 use hv_partition::{build_guest_boot_info, gate_d_plans_from_resolved};
-use hv_runtime::{assign_ipc_host_backing, initialize_gate_d, DatapathEngine, GateCPlans, MmioDispatch};
+use hv_runtime::{
+    assign_ipc_host_backing, initialize_gate_d, DatapathEngine, GateCPlans, MmioDispatch,
+};
 use hv_types::{HostPhysAddr, VcpuId, VmId};
 
 const IPC_RING_BYTES: usize = 524_328;
