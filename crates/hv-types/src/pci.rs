@@ -165,17 +165,29 @@ impl PciBdf {
         }
 
         let bus = PciBus::new(parse_u8_hex(bus_str)?);
-        let (dev_str, fn_str) = dev_fn_str
-            .split_once('.')
-            .ok_or(ArithmeticError::InvalidPciBdf)?;
+        let (dev_str, fn_str) = dev_fn_str.split_once('.').ok_or(ArithmeticError::InvalidPciBdf)?;
         let device = PciDevice::new(parse_u8_hex(dev_str)?)?;
         let function = PciFunction::new(parse_u8_hex(fn_str)?)?;
 
+        Ok(Self { segment, bus, device, function })
+    }
+
+    /// Creates a BDF from literal components.
+    ///
+    /// # Errors
+    ///
+    /// Returns component-specific PCI errors when `device` or `function` are out of range.
+    pub fn from_components(
+        segment: u16,
+        bus: u8,
+        device: u8,
+        function: u8,
+    ) -> Result<Self, ArithmeticError> {
         Ok(Self {
-            segment,
-            bus,
-            device,
-            function,
+            segment: PciSegment::new(segment),
+            bus: PciBus::new(bus),
+            device: PciDevice::new(device)?,
+            function: PciFunction::new(function)?,
         })
     }
 

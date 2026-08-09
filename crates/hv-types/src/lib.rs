@@ -24,7 +24,6 @@ pub mod pci;
 
 pub use addr::{GuestPhysAddr, GuestVirtAddr, HostPhysAddr, HostVirtAddr, Iova};
 pub use ids::{
-    ApicId, InterruptVector, IommuDomainId, LogicalCpuId, PackageId, PhysicalCoreId, VcpuId,
-    VmId,
+    ApicId, InterruptVector, IommuDomainId, LogicalCpuId, PackageId, PhysicalCoreId, VcpuId, VmId,
 };
 pub use pci::{PciBdf, PciBus, PciDevice, PciFunction, PciSegment};

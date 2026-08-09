@@ -298,10 +298,7 @@ fn validate_version(version: u32) -> Result<(), ConfigError> {
     if SUPPORTED_VERSIONS.contains(&version) {
         Ok(())
     } else {
-        Err(ConfigError::UnsupportedVersion {
-            found: version,
-            supported: SUPPORTED_VERSIONS,
-        })
+        Err(ConfigError::UnsupportedVersion { found: version, supported: SUPPORTED_VERSIONS })
     }
 }
 
@@ -315,19 +312,14 @@ fn validate_non_empty(path: &'static str, value: &str) -> Result<(), ConfigError
 
 fn validate_partitions(raw: &RawConfig) -> Result<(), ConfigError> {
     if raw.partitions.is_empty() {
-        return Err(ConfigError::MissingField {
-            path: "partitions",
-        });
+        return Err(ConfigError::MissingField { path: "partitions" });
     }
 
     let mut seen = alloc::collections::BTreeSet::new();
     for partition in &raw.partitions {
         validate_non_empty("partitions[].name", &partition.name)?;
         if partition.vcpus == 0 {
-            return Err(ConfigError::invalid(
-                "partitions[].vcpus",
-                "must be greater than zero",
-            ));
+            return Err(ConfigError::invalid("partitions[].vcpus", "must be greater than zero"));
         }
         if partition.memory_gib == 0 {
             return Err(ConfigError::invalid(
@@ -346,15 +338,18 @@ fn validate_partitions(raw: &RawConfig) -> Result<(), ConfigError> {
     Ok(())
 }
 
-fn normalize_partitions(partitions: &[crate::raw::RawPartition]) -> Result<Vec<NormalizedPartition>, ConfigError> {
+fn normalize_partitions(
+    partitions: &[crate::raw::RawPartition],
+) -> Result<Vec<NormalizedPartition>, ConfigError> {
     let mut out = Vec::with_capacity(partitions.len());
     let mut pci_owners = alloc::collections::BTreeMap::<String, String>::new();
 
     for (index, partition) in partitions.iter().enumerate() {
         let vm_id = VmId::new(index as u32);
-        let memory_bytes = hv_types::arithmetic::gib_to_bytes(partition.memory_gib).map_err(|_| {
-            ConfigError::invalid("partitions[].memory_gib", "overflow converting to bytes")
-        })?;
+        let memory_bytes =
+            hv_types::arithmetic::gib_to_bytes(partition.memory_gib).map_err(|_| {
+                ConfigError::invalid("partitions[].memory_gib", "overflow converting to bytes")
+            })?;
 
         let mut devices = Vec::new();
         for device in &partition.devices {
@@ -408,19 +403,13 @@ fn normalize_ipc(
             return Err(ConfigError::invalid("ipc[].slot_size", "must be greater than zero"));
         }
         if !seen.insert(channel.name.clone()) {
-            return Err(ConfigError::DuplicateId {
-                namespace: "ipc",
-                name: channel.name.clone(),
-            });
+            return Err(ConfigError::DuplicateId { namespace: "ipc", name: channel.name.clone() });
         }
 
         let producer = lookup_partition(partitions, &channel.producer, "producer")?;
         let consumer = lookup_partition(partitions, &channel.consumer, "consumer")?;
         if producer.vm_id == consumer.vm_id {
-            return Err(ConfigError::invalid(
-                "ipc[]",
-                "producer and consumer must differ",
-            ));
+            return Err(ConfigError::invalid("ipc[]", "producer and consumer must differ"));
         }
 
         out.push(NormalizedIpc {
@@ -445,13 +434,13 @@ fn lookup_partition<'a>(
     partitions
         .iter()
         .find(|p| p.name == name)
-        .ok_or_else(|| ConfigError::UnknownReference {
-            kind,
-            name: name.into(),
-        })
+        .ok_or_else(|| ConfigError::UnknownReference { kind, name: name.into() })
 }
 
-fn validate_datapath(partitions: &[NormalizedPartition], ipc: &[NormalizedIpc]) -> Result<(), ConfigError> {
+fn validate_datapath(
+    partitions: &[NormalizedPartition],
+    ipc: &[NormalizedIpc],
+) -> Result<(), ConfigError> {
     if ipc.is_empty() {
         return Ok(());
     }
@@ -459,10 +448,7 @@ fn validate_datapath(partitions: &[NormalizedPartition], ipc: &[NormalizedIpc]) 
     let mut adjacency: alloc::collections::BTreeMap<VmId, alloc::collections::BTreeSet<VmId>> =
         alloc::collections::BTreeMap::new();
     for channel in ipc {
-        adjacency
-            .entry(channel.producer)
-            .or_default()
-            .insert(channel.consumer);
+        adjacency.entry(channel.producer).or_default().insert(channel.consumer);
     }
 
     for (producer, consumers) in &adjacency {
@@ -508,26 +494,30 @@ fn validate_datapath(partitions: &[NormalizedPartition], ipc: &[NormalizedIpc]) 
 }
 
 fn has_direct_ipc(from: VmId, to: VmId, ipc: &[NormalizedIpc]) -> bool {
-    ipc.iter()
-        .any(|channel| channel.producer == from && channel.consumer == to)
+    ipc.iter().any(|channel| channel.producer == from && channel.consumer == to)
 }
 
-fn validate_resource_budgets(raw: &RawConfig, partitions: &[NormalizedPartition]) -> Result<(), ConfigError> {
+fn validate_resource_budgets(
+    raw: &RawConfig,
+    partitions: &[NormalizedPartition],
+) -> Result<(), ConfigError> {
     let total_vcpus: u64 = partitions.iter().map(|p| u64::from(p.vcpus)).sum();
     if total_vcpus > u64::from(raw.platform.requirements.min_physical_cores) {
         // Hypervisor also needs cores; this check ensures config is internally coherent.
     }
 
     let total_ram: u64 = partitions.iter().map(|p| p.memory_bytes).try_fold(0u64, |acc, v| {
-        acc.checked_add(v).ok_or(ConfigError::invalid(
-            "partitions",
-            "total partition RAM overflows",
-        ))
+        acc.checked_add(v)
+            .ok_or(ConfigError::invalid("partitions", "total partition RAM overflows"))
     })?;
 
-    let min_ram = hv_types::arithmetic::gib_to_bytes(raw.platform.requirements.min_ram_gib).map_err(|_| {
-        ConfigError::invalid("platform.requirements.min_ram_gib", "overflow converting to bytes")
-    })?;
+    let min_ram = hv_types::arithmetic::gib_to_bytes(raw.platform.requirements.min_ram_gib)
+        .map_err(|_| {
+            ConfigError::invalid(
+                "platform.requirements.min_ram_gib",
+                "overflow converting to bytes",
+            )
+        })?;
 
     if total_ram > min_ram {
         return Err(ConfigError::ResourceBudgetExceeded {
@@ -544,10 +534,7 @@ fn normalize_requirements(
     raw: &crate::raw::RawPlatformRequirements,
 ) -> Result<NormalizedPlatformRequirements, ConfigError> {
     if raw.arch != "x86_64" {
-        return Err(ConfigError::invalid(
-            "platform.requirements.arch",
-            "only x86_64 is supported",
-        ));
+        return Err(ConfigError::invalid("platform.requirements.arch", "only x86_64 is supported"));
     }
     if raw.min_physical_cores == 0 {
         return Err(ConfigError::invalid(
@@ -556,9 +543,7 @@ fn normalize_requirements(
         ));
     }
     if raw.page_sizes.is_empty() {
-        return Err(ConfigError::MissingField {
-            path: "platform.requirements.page_sizes",
-        });
+        return Err(ConfigError::MissingField { path: "platform.requirements.page_sizes" });
     }
     for size in &raw.page_sizes {
         if *size != 4096 && *size != 2_097_152 {
@@ -605,15 +590,11 @@ fn normalize_benchmark(raw: &crate::raw::RawBenchmark) -> Result<NormalizedBench
         ));
     }
     if raw.runs < 5 {
-        return Err(ConfigError::invalid(
-            "performance.benchmark.runs",
-            "must be at least 5",
-        ));
+        return Err(ConfigError::invalid("performance.benchmark.runs", "must be at least 5"));
     }
 
-    let max_loss_ppm = parse_ratio_ppm(&raw.max_loss_ratio).map_err(|reason| {
-        ConfigError::invalid("performance.benchmark.max_loss_ratio", reason)
-    })?;
+    let max_loss_ppm = parse_ratio_ppm(&raw.max_loss_ratio)
+        .map_err(|reason| ConfigError::invalid("performance.benchmark.max_loss_ratio", reason))?;
 
     Ok(NormalizedBenchmark {
         protocol: raw.protocol.clone(),
@@ -631,31 +612,21 @@ fn normalize_qemu(raw: &crate::raw::RawQemu) -> Result<NormalizedQemu, ConfigErr
     if raw.smp.cpus == 0 || raw.smp.cores == 0 || raw.smp.threads == 0 {
         return Err(ConfigError::invalid("qemu.smp", "cpus, cores and threads must be non-zero"));
     }
-    let memory_bytes = hv_types::arithmetic::mib_to_bytes(raw.memory_mib).map_err(|_| {
-        ConfigError::invalid("qemu.memory_mib", "overflow converting to bytes")
-    })?;
+    let memory_bytes = hv_types::arithmetic::mib_to_bytes(raw.memory_mib)
+        .map_err(|_| ConfigError::invalid("qemu.memory_mib", "overflow converting to bytes"))?;
 
     let mut devices = Vec::with_capacity(raw.devices.len());
     for device in &raw.devices {
         let kind = parse_device_kind(&device.kind)?;
-        let bdf = PciBdf::parse(&device.bdf).map_err(|_| {
-            ConfigError::invalid("qemu.devices[].bdf", "invalid PCI BDF")
-        })?;
-        devices.push(NormalizedQemuDevice {
-            kind,
-            bdf,
-            netdev: device.netdev.clone(),
-        });
+        let bdf = PciBdf::parse(&device.bdf)
+            .map_err(|_| ConfigError::invalid("qemu.devices[].bdf", "invalid PCI BDF"))?;
+        devices.push(NormalizedQemuDevice { kind, bdf, netdev: device.netdev.clone() });
     }
 
     Ok(NormalizedQemu {
         machine: raw.machine.clone(),
         cpu: raw.cpu.clone(),
-        smp: NormalizedSmp {
-            cpus: raw.smp.cpus,
-            cores: raw.smp.cores,
-            threads: raw.smp.threads,
-        },
+        smp: NormalizedSmp { cpus: raw.smp.cpus, cores: raw.smp.cores, threads: raw.smp.threads },
         memory_bytes,
         accel: raw.accel.clone(),
         ovmf: raw.ovmf.clone(),

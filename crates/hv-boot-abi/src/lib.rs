@@ -18,10 +18,12 @@
 #![no_std]
 #![warn(missing_docs)]
 
+pub mod layout;
+
 /// Major boot ABI version. Incompatible changes require a bump.
 pub const BOOT_ABI_VERSION_MAJOR: u16 = 1;
 /// Minor boot ABI version for backward-compatible additions.
-pub const BOOT_ABI_VERSION_MINOR: u16 = 0;
+pub const BOOT_ABI_VERSION_MINOR: u16 = 1;
 
 /// Magic signature for [`BootInfoHeader`].
 pub const BOOT_INFO_MAGIC: u64 = 0x1484_1484_1484_1484;
@@ -87,7 +89,15 @@ pub struct BootInfo {
     pub memory_map_entry_count: u32,
     /// Reserved for future flags.
     pub flags: u32,
+    /// Physical base address where the hypervisor image was loaded.
+    pub hypervisor_load_address: u64,
+    /// Total boot info blob size in bytes (header + fixed prefix + memory map).
+    pub boot_info_bytes: u32,
 }
+
+pub use layout::{
+    memory_map_slice, validate_boot_info_layout, BootLayoutError, BOOT_INFO_FIXED_PREFIX_BYTES,
+};
 
 #[cfg(test)]
 mod tests {
@@ -105,9 +115,15 @@ mod tests {
             magic: BOOT_INFO_MAGIC,
             version_major: BOOT_ABI_VERSION_MAJOR,
             version_minor: BOOT_ABI_VERSION_MINOR,
-            total_size: core::mem::size_of::<BootInfoHeader>() as u32,
+            total_size: core::mem::size_of::<BootInfo>() as u32,
             config_hash: [0; 32],
         };
         assert!(header.is_compatible());
+    }
+
+    #[test]
+    fn boot_info_size_includes_gate_c_fields() {
+        assert_eq!(core::mem::size_of::<BootInfo>(), 80);
+        assert_eq!(core::mem::size_of::<BootMemoryDescriptor>(), 32);
     }
 }

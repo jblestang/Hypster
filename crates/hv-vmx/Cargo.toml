@@ -1,0 +1,19 @@
+[package]
+name = "hv-vmx"
+description = "Intel VMX hardware programming for Hypster"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[features]
+default = []
+std = ["hv-types/std"]
+hardware = []
+
+[dependencies]
+hv-types = { workspace = true }
+hv-x86 = { workspace = true }
+
+[lints]
+workspace = true

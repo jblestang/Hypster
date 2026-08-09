@@ -13,6 +13,10 @@ crates/
   hv-config-model/   YAML -> validation -> IR pipeline
   hv-boot-abi/       Loader/hypervisor boot ABI
   hv-guest-abi/      Guest boot ABI
+  hv-x86/            CPUID, MSR, CR helpers
+  hv-cpu/            CPU feature probe
+  hv-vmx/            VMXON/VMCS programming
+  hv-runtime/        Post-handoff init pipeline
 tools/
   hv-config/         Configuration compiler CLI
 xtask/               Developer task runner
@@ -62,12 +66,12 @@ properties are fail-closed.
 
 ## Phases completed in this branch
 
-- Phase 0: workspace, lint policy, `hv-types`, checked arithmetic, xtask
-- Phase 1: YAML schema, `RawConfig`, strict validation
-- Phase 2: `NormalizedConfig`, `PlatformRequirements`, `StaticIntentIR`
-- Phase 3 design: `hv-boot-abi` and `hv-guest-abi` skeletons
+- Phase 0–3: workspace, config pipeline, ABIs
+- Gate B: ACPI/ELF parsers, planners, `StaticPlatformIR`, boot FSM skeleton
+- Gate C: VMX/EPT/VT-d install, loader handoff, `hv-runtime` init
+- Gate D: IPC rings, guest boot info, EPT IPC/MMIO mappings, embedded platform plans, host-assisted e2e datapath engine, guest MID relay, VMCS launch planning, e1000 MMIO + packet queues, VM-exit MMIO skeleton
 
-Virtualization runtime, loader, and hardware programming begin after Gate A.
+Guest VMLAUNCH under QEMU and UDP benchmark throughput measurement continue as follow-up work.
 
 ## Safety ordering
 

@@ -1,0 +1,43 @@
+[package]
+name = "hv-partition"
+description = "Guest partition boot info builder for Hypster"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[features]
+default = []
+std = [
+    "hv-types/std",
+    "dep:hv-config-model",
+    "dep:hv-core",
+    "dep:hv-ipc",
+    "dep:hv-memory",
+    "dep:hv-runtime",
+    "dep:hv-ept",
+    "dep:hv-vtd",
+    "hv-config-model/std",
+    "hv-core/std",
+    "hv-ipc/std",
+    "hv-memory/std",
+    "hv-runtime/std",
+    "hv-ept/plan",
+    "hv-ept/std",
+    "hv-vtd/plan",
+    "hv-vtd/std",
+]
+
+[dependencies]
+hv-types = { workspace = true, default-features = false }
+hv-guest-abi = { workspace = true }
+hv-config-model = { workspace = true, optional = true, default-features = false }
+hv-core = { path = "../hv-core", optional = true, default-features = false }
+hv-ipc = { path = "../hv-ipc", optional = true, default-features = false }
+hv-memory = { path = "../hv-memory", optional = true, default-features = false }
+hv-runtime = { path = "../hv-runtime", optional = true, default-features = false }
+hv-ept = { path = "../hv-ept", optional = true, default-features = false }
+hv-vtd = { path = "../hv-vtd", optional = true, default-features = false }
+
+[lints]
+workspace = true

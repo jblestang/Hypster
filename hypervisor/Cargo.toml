@@ -1,0 +1,43 @@
+[package]
+name = "hypster"
+description = "Hypster static x86-64 hypervisor"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[lib]
+name = "hypster"
+path = "src/lib.rs"
+test = false
+
+[[bin]]
+name = "hypster"
+path = "src/main.rs"
+test = false
+required-features = ["bare-metal-bin"]
+
+[features]
+default = []
+bare-metal-bin = []
+
+[dependencies]
+hv-boot-abi = { workspace = true }
+hv-core = { path = "../crates/hv-core", default-features = false }
+hv-runtime = { path = "../crates/hv-runtime" }
+hv-types = { workspace = true, default-features = false }
+hv-ept = { path = "../crates/hv-ept", default-features = false }
+hv-vtd = { path = "../crates/hv-vtd", default-features = false }
+hv-config-model = { path = "../crates/hv-config-model", default-features = false }
+hv-ipc = { path = "../crates/hv-ipc", default-features = false }
+
+[build-dependencies]
+hv-config-model = { path = "../crates/hv-config-model", features = ["std"] }
+hv-core = { path = "../crates/hv-core", features = ["std"] }
+hv-partition = { path = "../crates/hv-partition", features = ["std"] }
+hv-runtime = { path = "../crates/hv-runtime" }
+hv-ept = { path = "../crates/hv-ept", features = ["std"] }
+hv-vtd = { path = "../crates/hv-vtd", features = ["std"] }
+
+[lints]
+workspace = true

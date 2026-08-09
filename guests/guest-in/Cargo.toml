@@ -1,0 +1,29 @@
+[package]
+name = "guest-in"
+description = "Hypster IN partition guest stub"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[lib]
+name = "guest_in"
+path = "src/lib.rs"
+test = false
+
+[[bin]]
+name = "guest-in"
+path = "src/main.rs"
+test = false
+required-features = ["bare-metal-bin"]
+
+[features]
+default = []
+bare-metal-bin = []
+
+[dependencies]
+guest-common = { path = "../guest-common" }
+hv-guest-abi = { workspace = true }
+
+[lints]
+workspace = true

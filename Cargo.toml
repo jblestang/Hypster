@@ -1,11 +1,31 @@
 [workspace]
 resolver = "2"
 members = [
+    "crates/hv-x86",
+    "crates/hv-cpu",
     "crates/hv-types",
     "crates/hv-config-model",
     "crates/hv-boot-abi",
     "crates/hv-guest-abi",
+    "crates/hv-acpi",
+    "crates/hv-elf",
+    "crates/hv-cpu-topology",
+    "crates/hv-memory",
+    "crates/hv-ept",
+    "crates/hv-vtd",
+    "crates/hv-vmx",
+    "crates/hv-ipc",
+    "crates/hv-e1000",
+    "crates/hv-partition",
+    "crates/hv-runtime",
+    "crates/hv-core",
+    "loader/hv-loader",
+    "hypervisor",
     "tools/hv-config",
+    "guests/guest-common",
+    "guests/guest-in",
+    "guests/guest-mid",
+    "guests/guest-out",
     "xtask",
 ]
 
@@ -17,10 +37,22 @@ repository = "https://github.com/hypster/hypster"
 rust-version = "1.85"
 
 [workspace.dependencies]
-hv-types = { path = "crates/hv-types" }
-hv-config-model = { path = "crates/hv-config-model" }
+hv-x86 = { path = "crates/hv-x86" }
+hv-cpu = { path = "crates/hv-cpu" }
+hv-vmx = { path = "crates/hv-vmx" }
+hv-runtime = { path = "crates/hv-runtime" }
+hv-ipc = { path = "crates/hv-ipc" }
+hv-e1000 = { path = "crates/hv-e1000" }
+hv-partition = { path = "crates/hv-partition" }
+hv-types = { path = "crates/hv-types", default-features = false }
+hv-config-model = { path = "crates/hv-config-model", default-features = false }
 hv-boot-abi = { path = "crates/hv-boot-abi" }
 hv-guest-abi = { path = "crates/hv-guest-abi" }
+hv-acpi = { path = "crates/hv-acpi", default-features = false }
+hv-elf = { path = "crates/hv-elf" }
+hv-core = { path = "crates/hv-core" }
+uefi = { version = "=0.28.0", default-features = false, features = ["alloc"] }
+log = { version = "=0.4.22", default-features = false }
 
 serde = { version = "=1.0.217", default-features = false, features = ["derive", "alloc"] }
 serde_yaml = "=0.9.34"

@@ -1,0 +1,18 @@
+[package]
+name = "guest-common"
+description = "Shared helpers for Hypster guest partitions"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+hv-guest-abi = { workspace = true }
+hv-ipc = { path = "../../crates/hv-ipc", default-features = false }
+hv-types = { workspace = true, default-features = false }
+
+[dev-dependencies]
+hv-ipc = { path = "../../crates/hv-ipc", features = ["std"] }
+
+[lints]
+workspace = true

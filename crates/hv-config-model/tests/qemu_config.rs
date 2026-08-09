@@ -19,12 +19,8 @@ fn deterministic_vm_ids_follow_declaration_order() {
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../configs/qemu.yaml");
     let raw = read_yaml_file(path).expect("read qemu.yaml");
     let compiled = compile_config(raw).expect("compile qemu.yaml");
-    let names: Vec<_> = compiled
-        .intent
-        .partitions
-        .iter()
-        .map(|p| (p.vm_id.raw(), p.name.as_str()))
-        .collect();
+    let names: Vec<_> =
+        compiled.intent.partitions.iter().map(|p| (p.vm_id.raw(), p.name.as_str())).collect();
     assert_eq!(names, vec![(0, "in"), (1, "mid"), (2, "out")]);
 }
 

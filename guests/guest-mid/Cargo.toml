@@ -1,0 +1,29 @@
+[package]
+name = "guest-mid"
+description = "Hypster MID partition guest stub"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[lib]
+name = "guest_mid"
+path = "src/lib.rs"
+test = false
+
+[[bin]]
+name = "guest-mid"
+path = "src/main.rs"
+test = false
+required-features = ["bare-metal-bin"]
+
+[features]
+default = []
+bare-metal-bin = []
+
+[dependencies]
+guest-common = { path = "../guest-common" }
+hv-guest-abi = { workspace = true }
+
+[lints]
+workspace = true

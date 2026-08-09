@@ -118,7 +118,10 @@ pub struct BenchmarkIntent {
 
 impl StaticIntentIR {
     /// Builds the static intent IR from normalized configuration and hash.
-    pub fn from_normalized(config: &NormalizedConfig, config_hash: ConfigHash) -> Result<Self, crate::error::ConfigError> {
+    pub fn from_normalized(
+        config: &NormalizedConfig,
+        config_hash: ConfigHash,
+    ) -> Result<Self, crate::error::ConfigError> {
         let platform_requirements = PlatformRequirements::from_normalized(config);
         let partitions = build_partition_intents(&config.partitions)?;
         let ipc = build_ipc_intents(&config.ipc)?;
@@ -135,9 +138,7 @@ impl StaticIntentIR {
                 hypervisor: config.boot.hypervisor.clone(),
                 exit_boot_services: config.boot.exit_boot_services,
             },
-            qemu: QemuIntent {
-                plan: config.qemu.clone(),
-            },
+            qemu: QemuIntent { plan: config.qemu.clone() },
             benchmark: BenchmarkIntent {
                 protocol: config.benchmark.protocol.clone(),
                 frame_size: config.benchmark.frame_size,
@@ -156,17 +157,16 @@ impl StaticIntentIR {
     }
 }
 
-fn build_partition_intents(partitions: &[NormalizedPartition]) -> Result<Vec<PartitionIntent>, crate::error::ConfigError> {
+fn build_partition_intents(
+    partitions: &[NormalizedPartition],
+) -> Result<Vec<PartitionIntent>, crate::error::ConfigError> {
     let mut out = Vec::with_capacity(partitions.len());
     for partition in partitions {
         let iommu_domain = IommuDomainId::new((partition.vm_id.raw() + 1) as u16);
         let devices = partition
             .devices
             .iter()
-            .map(|device| DeviceIntent {
-                kind: device.kind,
-                bdf: device.bdf.to_string(),
-            })
+            .map(|device| DeviceIntent { kind: device.kind, bdf: device.bdf.to_string() })
             .collect();
 
         out.push(PartitionIntent {
@@ -182,14 +182,22 @@ fn build_partition_intents(partitions: &[NormalizedPartition]) -> Result<Vec<Par
     Ok(out)
 }
 
-fn build_ipc_intents(channels: &[NormalizedIpc]) -> Result<Vec<IpcIntent>, crate::error::ConfigError> {
+fn build_ipc_intents(
+    channels: &[NormalizedIpc],
+) -> Result<Vec<IpcIntent>, crate::error::ConfigError> {
+    /// Must stay in sync with [`hv_ipc::IPC_RING_HEADER_BYTES`].
+    const IPC_RING_HEADER_BYTES: u64 = 40;
+
     let mut out = Vec::with_capacity(channels.len());
     for channel in channels {
         let slot_bytes = u64::from(channel.slot_size);
         let count = u64::from(channel.slot_count);
-        let shared_bytes = slot_bytes
-            .checked_mul(count)
-            .ok_or_else(|| crate::error::ConfigError::invalid("ipc[]", "shared memory size overflow"))?;
+        let payload_bytes = slot_bytes.checked_mul(count).ok_or_else(|| {
+            crate::error::ConfigError::invalid("ipc[]", "shared memory size overflow")
+        })?;
+        let shared_bytes = payload_bytes.checked_add(IPC_RING_HEADER_BYTES).ok_or_else(|| {
+            crate::error::ConfigError::invalid("ipc[]", "shared memory size overflow")
+        })?;
         out.push(IpcIntent {
             name: channel.name.clone(),
             producer: channel.producer,

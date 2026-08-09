@@ -1,0 +1,43 @@
+[package]
+name = "hv-runtime"
+description = "Gate C hypervisor runtime initialization"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[features]
+default = []
+hardware = ["hv-vmx/hardware"]
+std = ["hv-config-model/std", "hv-types/std", "hv-ipc/std"]
+
+[dependencies]
+hv-boot-abi = { workspace = true }
+hv-core = { path = "../hv-core", default-features = false }
+hv-cpu = { path = "../hv-cpu" }
+hv-x86 = { path = "../hv-x86" }
+hv-acpi = { workspace = true, default-features = false }
+hv-ept = { path = "../hv-ept", default-features = false }
+hv-vtd = { path = "../hv-vtd", default-features = false }
+hv-vmx = { path = "../hv-vmx" }
+hv-types = { workspace = true, default-features = false }
+hv-config-model = { path = "../hv-config-model", default-features = false }
+hv-e1000 = { path = "../hv-e1000", default-features = false }
+hv-elf = { path = "../hv-elf", default-features = false }
+hv-ipc = { path = "../hv-ipc", default-features = false }
+
+[dev-dependencies]
+hv-ept = { path = "../hv-ept", features = ["std"] }
+hv-vtd = { path = "../hv-vtd", features = ["std"] }
+hv-partition = { path = "../hv-partition", features = ["std"] }
+hv-core = { path = "../hv-core", features = ["std"] }
+hv-config-model = { workspace = true, features = ["std"] }
+hv-boot-abi = { workspace = true }
+hv-guest-abi = { workspace = true }
+hv-ipc = { path = "../hv-ipc", features = ["std"] }
+hv-e1000 = { path = "../hv-e1000", features = ["std"] }
+hv-elf = { path = "../hv-elf" }
+hv-vmx = { path = "../hv-vmx" }
+
+[lints]
+workspace = true
