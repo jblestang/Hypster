@@ -1,0 +1,19 @@
+[package]
+name = "hv-vtd"
+description = "Intel VT-d planning for Hypster"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+hv-types = { workspace = true }
+hv-config-model = { workspace = true, features = ["std"] }
+hv-memory = { path = "../hv-memory" }
+
+[features]
+default = []
+std = ["hv-types/std"]
+
+[lints]
+workspace = true

@@ -20,8 +20,9 @@ ValidatedPlatform
 StaticPlatformIR
 ```
 
-This branch implements `PlatformRequirements` and `StaticIntentIR`. Runtime
-construction of `ObservedPlatform` and comparison logic begins in Phase 8/9.
+This branch implements the full Gate B contract chain through `StaticPlatformIR`.
+Phase 0–3 delivered `PlatformRequirements` and `StaticIntentIR`; Gate B adds
+`ObservedPlatform`, validation, planners, and boot skeletons.
 
 ## PlatformRequirements
 
@@ -56,32 +57,34 @@ Examples:
 
 Preferred or optional features must not silently downgrade required properties.
 
-## ObservedPlatform (future)
+## ObservedPlatform
 
-`ObservedPlatform` will be built from:
+`ObservedPlatform` is built at boot from:
 
-- CPUID and MSRs
-- UEFI memory map
-- ACPI RSDP, XSDT, MADT, DMAR, MCFG
-- PCI enumeration
+- CPUID and MSRs (summarized in `ObservedCpuFeatures`)
+- UEFI memory map (`ConventionalRegion` list)
+- ACPI summaries (RSDP → XSDT/RSDT → MADT, DMAR, MCFG)
+- PCI enumeration (`ObservedPciDevice`)
+
+Gate B host tests use `hv_core::fixture::qemu_validation_observed()` as a
+deterministic QEMU stand-in. The UEFI loader discovers the RSDP from the
+configuration table and passes it through `BootInfo`.
 
 Hardware must satisfy or refuse; it must never silently rewrite YAML.
 
-## StaticIntentIR
+## StaticPlatformIR
 
-`StaticIntentIR` is the static planning IR consumed by later allocators for:
+`StaticPlatformIR` is produced by `resolve_platform()` after validation:
 
-- CPU plan
-- memory plan
-- EPT plan
-- VT-d plan
-- PCI plan
-- IPC plan
-- IRQ plan
-- boot plan
-- QEMU plan
+```text
+StaticIntentIR + ObservedPlatform
+  → validate_platform()
+  → plan_cpu / plan_memory / plan_ept / plan_vtd
+  → StaticPlatformIR
+```
 
-Each partition receives a dedicated IOMMU domain identifier in the MVP IR.
+Run `cargo xtask platform resolve configs/qemu.yaml` to exercise the pipeline
+on the reference configuration.
 
 ## Proof levels
 
@@ -89,5 +92,7 @@ Each partition receives a dedicated IOMMU domain identifier in the MVP IR.
 |---------------|--------|
 | YAML -> PlatformRequirements | UNIT + PROPERTY |
 | Deterministic IR | UNIT + PROPERTY |
-| ObservedPlatform compare | QEMU + REAL_HW (future) |
-| Fail-closed boot refusal | QEMU + REAL_HW (future) |
+| ObservedPlatform compare | UNIT + QEMU fixture |
+| StaticPlatformIR resolve | UNIT + `cargo xtask platform resolve` |
+| Fail-closed boot refusal | UNIT + Gate B integration tests |
+| UEFI loader / hypervisor skeleton | BUILD (`x86_64-unknown-uefi`, `x86_64-unknown-none`) |

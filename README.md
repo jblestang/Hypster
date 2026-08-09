@@ -5,12 +5,12 @@ partitioned systems.
 
 ## Status
 
-This branch completes **Phase 0–3 foundation**:
+This branch completes **Gate B (before VMX)** on top of Phase 0–3:
 
-- workspace, lint policy, `hv-types`
-- YAML configuration compiler and validation
-- `PlatformRequirements` and `StaticIntentIR`
-- boot/guest ABI skeletons
+- ACPI + ELF parsers, CPU/memory/EPT/VT-d planners
+- `ObservedPlatform` validation and `StaticPlatformIR` resolution
+- UEFI loader skeleton (`hv-loader`) and hypervisor entry (`hypster`)
+- boot phase FSM and Gate B integration tests
 
 ## Quick start
 
@@ -19,7 +19,10 @@ cargo xtask test
 cargo xtask build
 cargo xtask config validate configs/qemu.yaml
 cargo xtask config generate configs/qemu.yaml
-cargo clippy --all-targets --all-features -- -D warnings
+cargo xtask platform resolve configs/qemu.yaml
+cargo clippy --workspace --exclude hv-loader --exclude hypster --all-targets --all-features -- -D warnings
+cargo build -p hv-loader --target x86_64-unknown-uefi
+cargo build -p hypster --target x86_64-unknown-none
 ```
 
 ## Documentation

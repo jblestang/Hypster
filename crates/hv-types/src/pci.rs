@@ -179,6 +179,25 @@ impl PciBdf {
         })
     }
 
+    /// Creates a BDF from literal components.
+    ///
+    /// # Errors
+    ///
+    /// Returns component-specific PCI errors when `device` or `function` are out of range.
+    pub fn from_components(
+        segment: u16,
+        bus: u8,
+        device: u8,
+        function: u8,
+    ) -> Result<Self, ArithmeticError> {
+        Ok(Self {
+            segment: PciSegment::new(segment),
+            bus: PciBus::new(bus),
+            device: PciDevice::new(device)?,
+            function: PciFunction::new(function)?,
+        })
+    }
+
     /// Formats the BDF as `SSSS:BB:DD.F`.
     #[must_use]
     pub fn format(self) -> [u8; 12] {

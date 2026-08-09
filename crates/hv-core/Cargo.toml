@@ -1,0 +1,43 @@
+[package]
+name = "hv-core"
+description = "Hypster core platform observation, validation, and resolution"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[features]
+default = ["std"]
+std = [
+    "hv-types/std",
+    "dep:hv-config-model",
+    "dep:hv-acpi",
+    "dep:hv-elf",
+    "dep:hv-cpu-topology",
+    "dep:hv-memory",
+    "dep:hv-ept",
+    "dep:hv-vtd",
+    "hv-config-model/std",
+    "hv-acpi/std",
+    "hv-elf/std",
+    "hv-cpu-topology/std",
+    "hv-memory/std",
+]
+
+[dependencies]
+hv-types = { workspace = true }
+hv-boot-abi = { workspace = true }
+hv-config-model = { workspace = true, optional = true }
+hv-acpi = { workspace = true, optional = true }
+hv-elf = { workspace = true, optional = true }
+hv-cpu-topology = { path = "../hv-cpu-topology", optional = true }
+hv-memory = { path = "../hv-memory", optional = true }
+hv-ept = { path = "../hv-ept", optional = true }
+hv-vtd = { path = "../hv-vtd", optional = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+hv-config-model = { workspace = true }
+
+[lints]
+workspace = true

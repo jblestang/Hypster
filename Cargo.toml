@@ -5,6 +5,15 @@ members = [
     "crates/hv-config-model",
     "crates/hv-boot-abi",
     "crates/hv-guest-abi",
+    "crates/hv-acpi",
+    "crates/hv-elf",
+    "crates/hv-cpu-topology",
+    "crates/hv-memory",
+    "crates/hv-ept",
+    "crates/hv-vtd",
+    "crates/hv-core",
+    "loader/hv-loader",
+    "hypervisor",
     "tools/hv-config",
     "xtask",
 ]
@@ -21,6 +30,11 @@ hv-types = { path = "crates/hv-types" }
 hv-config-model = { path = "crates/hv-config-model" }
 hv-boot-abi = { path = "crates/hv-boot-abi" }
 hv-guest-abi = { path = "crates/hv-guest-abi" }
+hv-acpi = { path = "crates/hv-acpi" }
+hv-elf = { path = "crates/hv-elf" }
+hv-core = { path = "crates/hv-core" }
+uefi = { version = "=0.28.0", default-features = false, features = ["alloc"] }
+log = { version = "=0.4.22", default-features = false }
 
 serde = { version = "=1.0.217", default-features = false, features = ["derive", "alloc"] }
 serde_yaml = "=0.9.34"

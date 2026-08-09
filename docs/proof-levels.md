@@ -34,6 +34,20 @@ sufficient for silicon-specific properties.
 | VMX/EPT/VT-d hardware behavior | QEMU + REAL_HW (future) |
 | 200 Mbit/s throughput | PERFORMANCE (future) |
 
+## Gate B matrix
+
+| Requirement | Levels |
+|-------------|--------|
+| ACPI table parsers (`hv-acpi`) | UNIT |
+| ELF64 loader parser (`hv-elf`) | UNIT |
+| `ObservedPlatform` construction | UNIT + QEMU fixture |
+| Platform validation (fail-closed) | UNIT + Gate B integration tests |
+| CPU/memory/EPT/VT-d planners | UNIT + `platform resolve` |
+| Boot phase FSM | UNIT |
+| UEFI loader skeleton | BUILD (`x86_64-unknown-uefi`) |
+| Hypervisor entry skeleton | BUILD (`x86_64-unknown-none`) |
+| VMX/EPT/VT-d hardware programming | QEMU + REAL_HW (Gate C) |
+
 ## Gates
 
 - **Gate A (before UEFI)** — types, config, requirements, IR, tests
@@ -41,4 +55,4 @@ sufficient for silicon-specific properties.
 - **Gate C (before e1000)** — CPU/DMA isolation, lifecycle
 - **Gate D (before optimization)** — end-to-end datapath, malicious tests
 
-This branch targets Gate A.
+This branch targets Gate B.

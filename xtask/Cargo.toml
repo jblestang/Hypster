@@ -8,6 +8,7 @@ publish = false
 
 [dependencies]
 hv-config-model = { workspace = true }
+hv-core = { workspace = true }
 
 [lints]
 workspace = true
