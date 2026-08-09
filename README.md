@@ -25,8 +25,9 @@ cargo xtask platform resolve configs/qemu.yaml
 cargo clippy --workspace --exclude hv-loader --exclude hypster --all-targets --all-features -- -D warnings
 cargo build -p hv-loader --target x86_64-unknown-uefi
 cargo build -p hypster --target x86_64-unknown-none
-# Optional: enable real VMXON on bare metal / nested VMX host
-cargo build -p hypster --target x86_64-unknown-none -p hv-runtime --features hardware
+# Optional: real VMXON on bare metal or nested-VMX hosts
+cargo build -p hypster --target x86_64-unknown-none
+cargo build -p hv-runtime --features hardware
 ```
 
 ## Documentation

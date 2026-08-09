@@ -34,12 +34,7 @@ impl<'a> VtdContextTables<'a> {
             return Err(VtdPlanError::BufferTooSmall);
         }
         buffer[..ROOT_TABLE_SIZE + CONTEXT_TABLE_SIZE].fill(0);
-        Ok(Self {
-            buffer,
-            buffer_hpa,
-            root_offset: 0,
-            context_offset: ROOT_TABLE_SIZE,
-        })
+        Ok(Self { buffer, buffer_hpa, root_offset: 0, context_offset: ROOT_TABLE_SIZE })
     }
 
     fn root_table_hpa(&self) -> HostPhysAddr {
@@ -52,8 +47,7 @@ impl<'a> VtdContextTables<'a> {
 
     fn install_root_pointer(&mut self) {
         let entry = root_entry(self.context_table_hpa().raw());
-        self.buffer[self.root_offset..self.root_offset + ROOT_ENTRY_SIZE]
-            .copy_from_slice(&entry);
+        self.buffer[self.root_offset..self.root_offset + ROOT_ENTRY_SIZE].copy_from_slice(&entry);
     }
 
     fn write_context_entry(
@@ -184,19 +178,11 @@ mod tests {
 
         let mut buffer = [0u8; ROOT_TABLE_SIZE + CONTEXT_TABLE_SIZE];
         let drhd = HostPhysAddr::new(0xFED9_0000);
-        let result = install_vtd_domains(
-            &mut buffer,
-            HostPhysAddr::new(0x20_0000),
-            &domains,
-            drhd,
-        )
-        .expect("install VT-d");
+        let result = install_vtd_domains(&mut buffer, HostPhysAddr::new(0x20_0000), &domains, drhd)
+            .expect("install VT-d");
 
         assert_eq!(result.root_table_hpa, HostPhysAddr::new(0x20_0000));
-        assert_eq!(
-            result.context_table_hpa,
-            HostPhysAddr::new(0x20_0000 + ROOT_TABLE_SIZE as u64)
-        );
+        assert_eq!(result.context_table_hpa, HostPhysAddr::new(0x20_0000 + ROOT_TABLE_SIZE as u64));
         assert_eq!(result.bytes_used, ROOT_TABLE_SIZE + CONTEXT_TABLE_SIZE);
 
         let hw = VtdHardwareState::from_install(result, drhd);

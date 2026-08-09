@@ -14,7 +14,7 @@ pub mod plan;
 
 pub use error::MemoryPlanError;
 pub use map::{ConventionalRegion, UefiMemoryType};
-pub use plan::{MemoryPlan, MemoryPurpose, MemoryRegionPlan, plan_memory};
+pub use plan::{plan_memory, MemoryPlan, MemoryPurpose, MemoryRegionPlan};
 
 /// Hypervisor private reservation in bytes (MVP Gate B constant).
 pub const HYPERVISOR_RESERVE_BYTES: u64 = 64 * 1024 * 1024;

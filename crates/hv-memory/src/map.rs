@@ -50,10 +50,7 @@ pub fn collect_conventional(
     let mut regions = alloc::vec::Vec::new();
     for (typ, base, size) in descriptors {
         if UefiMemoryType::from_raw(*typ) == Some(UefiMemoryType::Conventional) && *size > 0 {
-            regions.push(ConventionalRegion {
-                base: *base,
-                size: *size,
-            });
+            regions.push(ConventionalRegion { base: *base, size: *size });
         }
     }
     regions
@@ -61,7 +58,5 @@ pub fn collect_conventional(
 
 /// Returns total conventional memory bytes.
 pub fn total_conventional_bytes(regions: &[ConventionalRegion]) -> Option<u64> {
-    regions
-        .iter()
-        .try_fold(0u64, |acc, region| acc.checked_add(region.size))
+    regions.iter().try_fold(0u64, |acc, region| acc.checked_add(region.size))
 }

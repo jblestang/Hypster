@@ -9,7 +9,7 @@ use hv_types::arithmetic::{align_up_u64, checked_add_u64, is_aligned_u64, ranges
 use hv_types::HostPhysAddr;
 
 use crate::error::MemoryPlanError;
-use crate::map::{ConventionalRegion, total_conventional_bytes};
+use crate::map::{total_conventional_bytes, ConventionalRegion};
 use crate::{HYPERVISOR_RESERVE_BYTES, PLANNER_PAGE_SIZE};
 
 /// Purpose label for a planned host memory region.
@@ -76,17 +76,13 @@ pub fn plan_memory(
     });
     for partition in intent.partitions.iter() {
         pending.push(PendingAllocation {
-            purpose: MemoryPurpose::PartitionGuestRam {
-                vm_id: partition.vm_id.raw(),
-            },
+            purpose: MemoryPurpose::PartitionGuestRam { vm_id: partition.vm_id.raw() },
             size: partition.memory_bytes,
         });
     }
     for channel in intent.ipc.iter() {
         pending.push(PendingAllocation {
-            purpose: MemoryPurpose::IpcChannel {
-                name: channel.name.clone(),
-            },
+            purpose: MemoryPurpose::IpcChannel { name: channel.name.clone() },
             size: channel.shared_bytes,
         });
     }
@@ -106,20 +102,14 @@ pub fn plan_memory(
         cursor = HostPhysAddr::new(
             align_up_u64(cursor.raw(), PLANNER_PAGE_SIZE).map_err(|_| MemoryPlanError::Overflow)?,
         );
-        let end = checked_add_u64(cursor.raw(), item.size).map_err(|_| MemoryPlanError::Overflow)?;
-        regions.push(MemoryRegionPlan {
-            purpose: item.purpose,
-            base: cursor,
-            size: item.size,
-        });
+        let end =
+            checked_add_u64(cursor.raw(), item.size).map_err(|_| MemoryPlanError::Overflow)?;
+        regions.push(MemoryRegionPlan { purpose: item.purpose, base: cursor, size: item.size });
         cursor = HostPhysAddr::new(end);
     }
 
     validate_plan(&regions)?;
-    Ok(MemoryPlan {
-        allocated_bytes: required,
-        regions,
-    })
+    Ok(MemoryPlan { allocated_bytes: required, regions })
 }
 
 fn select_allocation_base(
@@ -140,18 +130,19 @@ fn select_allocation_base(
     let aligned = align_up_u64(region.base.raw(), PLANNER_PAGE_SIZE)
         .map_err(|_| MemoryPlanError::Overflow)?;
     let end = checked_add_u64(aligned, required).map_err(|_| MemoryPlanError::Overflow)?;
-    if end > checked_add_u64(region.base.raw(), region.size).map_err(|_| MemoryPlanError::Overflow)? {
-        return Err(MemoryPlanError::OutOfMemory {
-            required,
-            available: region.size,
-        });
+    if end
+        > checked_add_u64(region.base.raw(), region.size).map_err(|_| MemoryPlanError::Overflow)?
+    {
+        return Err(MemoryPlanError::OutOfMemory { required, available: region.size });
     }
     Ok(HostPhysAddr::new(aligned))
 }
 
 fn validate_plan(regions: &[MemoryRegionPlan]) -> Result<(), MemoryPlanError> {
     for region in regions {
-        if !is_aligned_u64(region.base.raw(), PLANNER_PAGE_SIZE).map_err(|_| MemoryPlanError::Overflow)? {
+        if !is_aligned_u64(region.base.raw(), PLANNER_PAGE_SIZE)
+            .map_err(|_| MemoryPlanError::Overflow)?
+        {
             return Err(MemoryPlanError::Misaligned {
                 region: purpose_label(&region.purpose),
                 base: region.base,

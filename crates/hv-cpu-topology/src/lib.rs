@@ -13,5 +13,5 @@ pub mod plan;
 pub mod topology;
 
 pub use error::CpuTopologyError;
-pub use plan::{CpuAssignment, CpuPlan, plan_cpu};
+pub use plan::{plan_cpu, CpuAssignment, CpuPlan};
 pub use topology::{CpuCore, CpuTopology};

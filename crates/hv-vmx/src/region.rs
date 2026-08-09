@@ -14,9 +14,7 @@ impl VmxonRegion {
     /// Creates a zeroed VMXON region with the revision identifier written at offset 0.
     #[must_use]
     pub fn new(revision: u32) -> Self {
-        let mut region = Self {
-            data: [0u8; VMXON_REGION_SIZE],
-        };
+        let mut region = Self { data: [0u8; VMXON_REGION_SIZE] };
         region.write_revision(revision);
         region
     }
@@ -42,9 +40,7 @@ impl VmxonRegion {
 
 impl core::fmt::Debug for VmxonRegion {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("VmxonRegion")
-            .field("revision", &self.revision())
-            .finish_non_exhaustive()
+        f.debug_struct("VmxonRegion").field("revision", &self.revision()).finish_non_exhaustive()
     }
 }
 

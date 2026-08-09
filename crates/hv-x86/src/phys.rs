@@ -28,9 +28,7 @@ pub unsafe fn read_phys_bytes(addr: HostPhysAddr, out: &mut [u8]) -> Result<(), 
         return Ok(());
     }
     let base = addr.raw();
-    let end = base
-        .checked_add(out.len() as u64)
-        .ok_or(X86Error::Overflow)?;
+    let end = base.checked_add(out.len() as u64).ok_or(X86Error::Overflow)?;
     if end > IDENTITY_MAP_LIMIT {
         return Err(X86Error::NotMapped);
     }

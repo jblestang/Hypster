@@ -68,9 +68,8 @@ impl BootLayoutError {
 /// `info` must point to a valid boot info blob whose trailing descriptors are
 /// initialized for `info.memory_map_entry_count` entries.
 pub unsafe fn memory_map_slice(info: &BootInfo) -> &[BootMemoryDescriptor] {
-    let desc_ptr = (info as *const BootInfo)
-        .cast::<u8>()
-        .add(BOOT_INFO_FIXED_PREFIX_BYTES) as *const BootMemoryDescriptor;
+    let desc_ptr = (info as *const BootInfo).cast::<u8>().add(BOOT_INFO_FIXED_PREFIX_BYTES)
+        as *const BootMemoryDescriptor;
     core::slice::from_raw_parts(desc_ptr, info.memory_map_entry_count as usize)
 }
 
@@ -120,13 +119,13 @@ pub unsafe fn validate_boot_info_layout(
             provided: total_bytes,
         })? as usize;
 
-    let required = BOOT_INFO_FIXED_PREFIX_BYTES
-        .checked_add(desc_bytes)
-        .ok_or(BootLayoutError::MemoryMapOutOfBounds {
+    let required = BOOT_INFO_FIXED_PREFIX_BYTES.checked_add(desc_bytes).ok_or(
+        BootLayoutError::MemoryMapOutOfBounds {
             entry_count: info.memory_map_entry_count,
             required: usize::MAX,
             provided: total_bytes,
-        })?;
+        },
+    )?;
 
     if required != total_bytes {
         return Err(BootLayoutError::MemoryMapOutOfBounds {
@@ -147,7 +146,10 @@ pub unsafe fn validate_boot_info_layout(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{BootAcpiInfo, BootInfoHeader, BOOT_ABI_VERSION_MAJOR, BOOT_ABI_VERSION_MINOR, BOOT_INFO_MAGIC};
+    use crate::{
+        BootAcpiInfo, BootInfoHeader, BOOT_ABI_VERSION_MAJOR, BOOT_ABI_VERSION_MINOR,
+        BOOT_INFO_MAGIC,
+    };
 
     fn sample_info(entry_count: u32) -> (BootInfo, usize) {
         let desc_bytes = entry_count as usize * size_of::<BootMemoryDescriptor>();
@@ -188,10 +190,7 @@ mod tests {
     fn validate_rejects_size_mismatch() {
         let (info, total) = sample_info(2);
         let result = unsafe { validate_boot_info_layout(&info, total - 1) };
-        assert!(matches!(
-            result,
-            Err(BootLayoutError::SizeMismatch { .. })
-        ));
+        assert!(matches!(result, Err(BootLayoutError::SizeMismatch { .. })));
     }
 
     #[test]

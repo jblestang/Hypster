@@ -21,10 +21,7 @@ fn run(args: Vec<String>) -> Result<(), String> {
     match args.first().map(String::as_str) {
         Some("validate") if args.len() == 2 => validate(Path::new(&args[1])),
         Some("generate") => {
-            let path = args
-                .get(1)
-                .ok_or_else(usage)
-                .map(PathBuf::from)?;
+            let path = args.get(1).ok_or_else(usage).map(PathBuf::from)?;
             let output = parse_output_flag(&args[2..])?;
             generate(&path, &output)
         }
@@ -37,9 +34,8 @@ fn parse_output_flag(args: &[String]) -> Result<PathBuf, String> {
     let mut idx = 0;
     while idx < args.len() {
         if args[idx] == "--output" {
-            let value = args
-                .get(idx + 1)
-                .ok_or_else(|| "missing value for --output".to_string())?;
+            let value =
+                args.get(idx + 1).ok_or_else(|| "missing value for --output".to_string())?;
             output = PathBuf::from(value);
             idx += 2;
         } else {

@@ -77,37 +77,17 @@ pub fn validate_platform(
         return Err(PlatformValidationError::ArchMismatch);
     }
 
-    check_feature(
-        "vmx",
-        requirements.vmx,
-        observed.cpu.vmx,
-    )?;
-    check_feature(
-        "ept",
-        requirements.ept,
-        observed.cpu.ept,
-    )?;
-    check_feature(
-        "vtd",
-        requirements.vtd,
-        observed.cpu.vtd && observed.acpi.dmar.is_some(),
-    )?;
+    check_feature("vmx", requirements.vmx, observed.cpu.vmx)?;
+    check_feature("ept", requirements.ept, observed.cpu.ept)?;
+    check_feature("vtd", requirements.vtd, observed.cpu.vtd && observed.acpi.dmar.is_some())?;
     check_feature("nx", requirements.nx, observed.cpu.nx)?;
     check_feature(
         "interrupt_remapping",
         requirements.interrupt_remapping,
         observed.interrupt_remapping_available(),
     )?;
-    check_feature(
-        "x2apic",
-        requirements.x2apic,
-        observed.x2apic_available(),
-    )?;
-    check_feature(
-        "invariant_tsc",
-        requirements.invariant_tsc,
-        observed.cpu.invariant_tsc,
-    )?;
+    check_feature("x2apic", requirements.x2apic, observed.x2apic_available())?;
+    check_feature("invariant_tsc", requirements.invariant_tsc, observed.cpu.invariant_tsc)?;
     check_feature("vpid", requirements.vpid, observed.cpu.vpid)?;
     check_feature(
         "vmx_preemption_timer",
@@ -130,17 +110,10 @@ pub fn validate_platform(
     }
 
     for expected in &requirements.expected_pci_devices {
-        let parsed = PciBdf::parse(&expected.bdf).map_err(|_| PlatformValidationError::MissingPciDevice {
-            bdf: expected.bdf.clone(),
-        })?;
-        if !observed
-            .pci_devices
-            .iter()
-            .any(|device| device.bdf == parsed)
-        {
-            return Err(PlatformValidationError::MissingPciDevice {
-                bdf: expected.bdf.clone(),
-            });
+        let parsed = PciBdf::parse(&expected.bdf)
+            .map_err(|_| PlatformValidationError::MissingPciDevice { bdf: expected.bdf.clone() })?;
+        if !observed.pci_devices.iter().any(|device| device.bdf == parsed) {
+            return Err(PlatformValidationError::MissingPciDevice { bdf: expected.bdf.clone() });
         }
     }
 

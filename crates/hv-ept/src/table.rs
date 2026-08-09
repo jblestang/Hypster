@@ -55,8 +55,5 @@ pub fn ept_4k_entry(host_hpa: u64, perms: u64, memtype: u64) -> u64 {
 /// Builds a 2 MiB leaf EPT entry.
 #[must_use]
 pub fn ept_2m_entry(host_hpa: u64, perms: u64, memtype: u64) -> u64 {
-    (host_hpa & 0x000F_FFFF_FFE0_0000)
-        | perms
-        | (memtype << EPT_MEMORY_TYPE_SHIFT)
-        | EPT_LARGE_PAGE
+    (host_hpa & 0x000F_FFFF_FFE0_0000) | perms | (memtype << EPT_MEMORY_TYPE_SHIFT) | EPT_LARGE_PAGE
 }

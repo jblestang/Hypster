@@ -45,9 +45,7 @@ fn base_config(partitions: Vec<RawPartition>, ipc: Vec<RawIpc>) -> RawConfig {
     RawConfig {
         version: 1,
         name: "test".into(),
-        platform: RawPlatform {
-            requirements: minimal_requirements(),
-        },
+        platform: RawPlatform { requirements: minimal_requirements() },
         partitions,
         ipc,
         security: RawSecurity {
@@ -56,9 +54,7 @@ fn base_config(partitions: Vec<RawPartition>, ipc: Vec<RawIpc>) -> RawConfig {
             ept_violation_policy: FaultPolicy::StopPartition,
             iommu_fault_policy: FaultPolicy::StopPartition,
         },
-        performance: RawPerformance {
-            benchmark: minimal_benchmark(),
-        },
+        performance: RawPerformance { benchmark: minimal_benchmark() },
         boot: RawBoot {
             loader: "loader.efi".into(),
             hypervisor: "hypster".into(),
@@ -67,11 +63,7 @@ fn base_config(partitions: Vec<RawPartition>, ipc: Vec<RawIpc>) -> RawConfig {
         qemu: RawQemu {
             machine: "q35".into(),
             cpu: "host".into(),
-            smp: RawSmp {
-                cpus: 4,
-                cores: 4,
-                threads: 1,
-            },
+            smp: RawSmp { cpus: 4, cores: 4, threads: 1 },
             memory_mib: 8192,
             accel: "tcg".into(),
             ovmf: "/opt/OVMF/OVMF_CODE.fd".into(),

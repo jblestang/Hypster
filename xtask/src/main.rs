@@ -27,10 +27,7 @@ fn run(args: Vec<String>) -> Result<(), String> {
         Some("config") => match args.get(1).map(String::as_str) {
             Some("validate") if args.len() == 3 => validate_config(Path::new(&args[2])),
             Some("generate") => {
-                let path = args
-                    .get(2)
-                    .ok_or_else(usage)
-                    .map(PathBuf::from)?;
+                let path = args.get(2).ok_or_else(usage).map(PathBuf::from)?;
                 let output = parse_output_flag(&args[3..])?;
                 generate_config(&path, &output)
             }
@@ -48,9 +45,8 @@ fn parse_output_flag(args: &[String]) -> Result<PathBuf, String> {
     let mut idx = 0;
     while idx < args.len() {
         if args[idx] == "--output" {
-            let value = args
-                .get(idx + 1)
-                .ok_or_else(|| "missing value for --output".to_string())?;
+            let value =
+                args.get(idx + 1).ok_or_else(|| "missing value for --output".to_string())?;
             output = PathBuf::from(value);
             idx += 2;
         } else {
@@ -64,14 +60,7 @@ fn run_tests() -> Result<(), String> {
     run_cmd(
         workspace_root(),
         "cargo",
-        &[
-            "test",
-            "--workspace",
-            "--exclude",
-            "hv-loader",
-            "--exclude",
-            "hypster",
-        ],
+        &["test", "--workspace", "--exclude", "hv-loader", "--exclude", "hypster"],
     )
 }
 
@@ -79,14 +68,7 @@ fn run_build() -> Result<(), String> {
     run_cmd(
         workspace_root(),
         "cargo",
-        &[
-            "build",
-            "--workspace",
-            "--exclude",
-            "hv-loader",
-            "--exclude",
-            "hypster",
-        ],
+        &["build", "--workspace", "--exclude", "hv-loader", "--exclude", "hypster"],
     )
 }
 
@@ -103,10 +85,7 @@ fn validate_config(path: &Path) -> Result<(), String> {
         "partitions={} ipc={} min_physical_cores={}",
         compiled.intent.partitions.len(),
         compiled.intent.ipc.len(),
-        compiled
-            .intent
-            .platform_requirements
-            .min_physical_cores
+        compiled.intent.platform_requirements.min_physical_cores
     );
     Ok(())
 }

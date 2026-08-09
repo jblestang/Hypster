@@ -24,11 +24,8 @@ pub fn resolve_platform(
     let cpu = plan_cpu(intent, &topology).map_err(CoreError::Cpu)?;
     let memory = plan_memory(intent, &observed.conventional_memory).map_err(CoreError::Memory)?;
     let ept = plan_ept(intent, &memory).map_err(CoreError::Ept)?;
-    let observed_pci: alloc::vec::Vec<VtdObservedPci> = observed
-        .pci_devices
-        .iter()
-        .map(|dev| VtdObservedPci { bdf: dev.bdf })
-        .collect();
+    let observed_pci: alloc::vec::Vec<VtdObservedPci> =
+        observed.pci_devices.iter().map(|dev| VtdObservedPci { bdf: dev.bdf }).collect();
     let vtd = plan_vtd(intent, &observed_pci).map_err(CoreError::Vtd)?;
 
     Ok(StaticPlatformIR {

@@ -20,19 +20,14 @@ pub fn plan_vtd(
     for partition in intent.partitions.iter() {
         let mut devices = Vec::new();
         for device in &partition.devices {
-            let parsed = PciBdf::parse(&device.bdf).map_err(|_| VtdPlanError::MissingPciDevice {
-                bdf: device.bdf.clone(),
-            })?;
+            let parsed = PciBdf::parse(&device.bdf)
+                .map_err(|_| VtdPlanError::MissingPciDevice { bdf: device.bdf.clone() })?;
             let present = observed_pci.iter().any(|obs| obs.bdf == parsed);
             if !present {
-                return Err(VtdPlanError::MissingPciDevice {
-                    bdf: device.bdf.clone(),
-                });
+                return Err(VtdPlanError::MissingPciDevice { bdf: device.bdf.clone() });
             }
             if !seen.insert(device.bdf.clone()) {
-                return Err(VtdPlanError::DeviceOwnershipConflict {
-                    bdf: device.bdf.clone(),
-                });
+                return Err(VtdPlanError::DeviceOwnershipConflict { bdf: device.bdf.clone() });
             }
             devices.push(device.bdf.clone());
         }

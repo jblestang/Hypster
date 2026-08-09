@@ -1,5 +1,6 @@
 #![allow(missing_docs)]
 #![allow(clippy::expect_used)]
+#![allow(unsafe_code)]
 
 use hv_boot_abi::{
     layout, BootAcpiInfo, BootInfo, BootInfoHeader, BOOT_ABI_VERSION_MAJOR, BOOT_ABI_VERSION_MINOR,
@@ -99,12 +100,8 @@ fn gate_c_runtime_initialize_without_hardware_vmx() {
         boot_info_bytes: total as u32,
     };
     let plans = GateCPlans {
-        ept: hv_ept::EptPlan {
-            partitions: Vec::new(),
-        },
-        vtd: hv_vtd::VtdPlan {
-            domains: Vec::new(),
-        },
+        ept: hv_ept::EptPlan { partitions: Vec::new() },
+        vtd: hv_vtd::VtdPlan { domains: Vec::new() },
         ept_table_base: HostPhysAddr::new(0),
         vtd_table_base: HostPhysAddr::new(0),
         vmxon_region_base: HostPhysAddr::new(0),

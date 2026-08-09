@@ -87,18 +87,12 @@ impl fmt::Display for ConfigError {
                 write!(f, "unknown {kind} `{name}`")
             }
             Self::DatapathViolation { reason } => write!(f, "datapath violation: {reason}"),
-            Self::PciOwnershipConflict { bdf, first, second } => write!(
-                f,
-                "PCI device `{bdf}` assigned to both `{first}` and `{second}`"
-            ),
-            Self::ResourceBudgetExceeded {
-                kind,
-                required,
-                available,
-            } => write!(
-                f,
-                "{kind} budget exceeded: required {required}, available {available}"
-            ),
+            Self::PciOwnershipConflict { bdf, first, second } => {
+                write!(f, "PCI device `{bdf}` assigned to both `{first}` and `{second}`")
+            }
+            Self::ResourceBudgetExceeded { kind, required, available } => {
+                write!(f, "{kind} budget exceeded: required {required}, available {available}")
+            }
             #[cfg(feature = "std")]
             Self::YamlParse(msg) => write!(f, "yaml parse error: {msg}"),
             #[cfg(feature = "std")]
@@ -113,9 +107,6 @@ impl std::error::Error for ConfigError {}
 impl ConfigError {
     /// Helper for invalid value errors.
     pub fn invalid(path: &'static str, reason: impl Into<String>) -> Self {
-        Self::InvalidValue {
-            path,
-            reason: reason.into(),
-        }
+        Self::InvalidValue { path, reason: reason.into() }
     }
 }

@@ -9,6 +9,7 @@ publish = false
 [[bin]]
 name = "hv-loader"
 path = "src/main.rs"
+test = false
 
 [dependencies]
 hv-boot-abi = { workspace = true }

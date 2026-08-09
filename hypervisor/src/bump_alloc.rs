@@ -29,9 +29,7 @@ unsafe impl GlobalAlloc for BumpAllocator {
         let inner = &mut *self.0.get();
         let align = layout.align();
         let aligned = (inner.next + align - 1) & !(align - 1);
-        let end = aligned
-            .checked_add(layout.size())
-            .unwrap_or(HEAP_SIZE + 1);
+        let end = aligned.checked_add(layout.size()).unwrap_or(HEAP_SIZE + 1);
         if end > HEAP_SIZE {
             return core::ptr::null_mut();
         }
@@ -43,4 +41,5 @@ unsafe impl GlobalAlloc for BumpAllocator {
 }
 
 #[global_allocator]
+#[cfg(not(test))]
 static ALLOCATOR: BumpAllocator = BumpAllocator::new();

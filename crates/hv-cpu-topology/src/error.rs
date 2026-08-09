@@ -32,13 +32,9 @@ impl fmt::Display for CpuTopologyError {
             Self::InsufficientCores { required, available } => {
                 write!(f, "insufficient cores: need {required}, have {available}")
             }
-            Self::TooManyVcpusPerCore {
-                partition,
-                requested,
-            } => write!(
-                f,
-                "partition `{partition}` requests {requested} vCPUs under exclusive_core"
-            ),
+            Self::TooManyVcpusPerCore { partition, requested } => {
+                write!(f, "partition `{partition}` requests {requested} vCPUs under exclusive_core")
+            }
             Self::SmtPolicyViolation { reason } => write!(f, "SMT policy violation: {reason}"),
         }
     }

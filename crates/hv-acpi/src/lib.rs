@@ -84,9 +84,7 @@ impl AcpiPlatformSummary {
     /// Returns true when DMAR advertises interrupt remapping.
     #[must_use]
     pub fn interrupt_remapping_available(&self) -> bool {
-        self.dmar
-            .as_ref()
-            .is_some_and(|dmar| dmar.interrupt_remapping)
+        self.dmar.as_ref().is_some_and(|dmar| dmar.interrupt_remapping)
     }
 
     /// Returns true when MADT contains x2APIC entries.

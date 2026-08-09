@@ -32,21 +32,6 @@ impl HypervisorImage {
 pub struct BootInfoBlob {
     /// Physical address of the boot info allocation.
     pub phys_addr: u64,
-    /// Total byte size of the allocation.
-    pub total_bytes: usize,
-    /// Entry count copied from the memory map.
-    pub entry_count: u32,
-}
-
-impl BootInfoBlob {
-    /// Returns a pointer to the fixed [`BootInfo`] prefix.
-    ///
-    /// # Safety
-    ///
-    /// Must only be called while the allocation remains valid.
-    pub unsafe fn boot_info_ptr(&self) -> *mut BootInfo {
-        self.phys_addr as *mut BootInfo
-    }
 }
 
 /// Builds a boot info blob from the UEFI memory map and ACPI RSDP pointer.
@@ -63,11 +48,9 @@ pub fn build_boot_info_blob(
     let entry_count = memory_map.entries().count() as u32;
     let desc_bytes = entry_count as usize * size_of::<BootMemoryDescriptor>();
     let prefix = size_of::<BootInfo>();
-    let total_bytes = prefix
-        .checked_add(desc_bytes)
-        .ok_or(uefi::Status::OUT_OF_RESOURCES)?;
+    let total_bytes = prefix.checked_add(desc_bytes).ok_or(uefi::Status::OUT_OF_RESOURCES)?;
 
-    let page_count = ((total_bytes + 4095) / 4096) as usize;
+    let page_count = (total_bytes + 4095) / 4096;
     let phys = boot_services
         .allocate_pages(AllocateType::AnyPages, MemoryType::LOADER_DATA, page_count)
         .map_err(|err| err.status())?;
@@ -100,18 +83,10 @@ pub fn build_boot_info_blob(
 
     copy_memory_map(memory_map, phys, prefix)?;
 
-    Ok(BootInfoBlob {
-        phys_addr: phys,
-        total_bytes,
-        entry_count,
-    })
+    Ok(BootInfoBlob { phys_addr: phys })
 }
 
-fn copy_memory_map(
-    memory_map: &MemoryMap,
-    phys: u64,
-    prefix: usize,
-) -> Result<(), uefi::Status> {
+fn copy_memory_map(memory_map: &MemoryMap, phys: u64, prefix: usize) -> Result<(), uefi::Status> {
     if prefix % align_of::<BootMemoryDescriptor>() != 0 {
         return Err(uefi::Status::INVALID_PARAMETER);
     }
@@ -151,15 +126,13 @@ fn try_load_hypster_bin(boot_services: &BootServices) -> Result<HypervisorImage,
         .map_err(|err| err.status())?;
     let mut file_system = FileSystem::new(fs);
     let path = cstr16!("\\EFI\\hypster\\hypster.bin");
-    let data = file_system
-        .read(path)
-        .map_err(|_| uefi::Status::NOT_FOUND)?;
+    let data = file_system.read(path).map_err(|_| uefi::Status::NOT_FOUND)?;
 
     if data.is_empty() {
         return Err(uefi::Status::LOAD_ERROR);
     }
 
-    let page_count = ((data.len() + 4095) / 4096) as usize;
+    let page_count = (data.len() + 4095) / 4096;
     let load_base = boot_services
         .allocate_pages(AllocateType::AnyPages, MemoryType::LOADER_DATA, page_count)
         .map_err(|err| err.status())?;
@@ -169,8 +142,5 @@ fn try_load_hypster_bin(boot_services: &BootServices) -> Result<HypervisorImage,
         ptr::copy_nonoverlapping(data.as_ptr(), load_base as *mut u8, data.len());
     }
 
-    Ok(HypervisorImage {
-        entry: load_base,
-        load_base,
-    })
+    Ok(HypervisorImage { entry: load_base, load_base })
 }

@@ -6,8 +6,8 @@ use hv_acpi::AcpiError;
 use hv_boot_abi::BootLayoutError;
 use hv_cpu::CpuProbeError;
 use hv_ept::EptPlanError;
-use hv_vtd::VtdPlanError;
 use hv_vmx::VmxError;
+use hv_vtd::VtdPlanError;
 use hv_x86::X86Error;
 
 /// Aggregated runtime initialization failure.

@@ -51,10 +51,7 @@ impl fmt::Display for AcpiError {
                 write!(f, "buffer too short: need {needed} bytes, have {available}")
             }
             Self::InvalidSignature { expected, found } => {
-                write!(
-                    f,
-                    "invalid signature: expected {expected}, found {found:02x?}"
-                )
+                write!(f, "invalid signature: expected {expected}, found {found:02x?}")
             }
             Self::InvalidChecksum => f.write_str("invalid ACPI checksum"),
             Self::InvalidLength { context, length } => {

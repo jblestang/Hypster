@@ -15,18 +15,10 @@ pub struct EptPermissions {
 
 impl EptPermissions {
     /// Guest RAM permissions: RW, no execute at EPT level (guest may still execute internally).
-    pub const GUEST_RAM: Self = Self {
-        read: true,
-        write: true,
-        execute: true,
-    };
+    pub const GUEST_RAM: Self = Self { read: true, write: true, execute: true };
 
     /// MMIO permissions: RW, no execute.
-    pub const MMIO: Self = Self {
-        read: true,
-        write: true,
-        execute: false,
-    };
+    pub const MMIO: Self = Self { read: true, write: true, execute: false };
 }
 
 /// EPT memory type.

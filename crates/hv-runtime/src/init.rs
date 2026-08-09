@@ -1,15 +1,15 @@
 //! Gate C runtime initialization sequence.
 
-use hv_acpi::rsdp::RSDP_V2_LEN;
 use hv_acpi::parse_rsdp;
+use hv_acpi::rsdp::RSDP_V2_LEN;
 use hv_boot_abi::{layout, BootInfo};
 use hv_core::boot::BootPhase;
 use hv_cpu::probe_cpu;
 use hv_ept::install_ept_mappings;
 use hv_types::HostPhysAddr;
-use hv_vtd::install_vtd_domains;
 #[cfg(all(feature = "hardware", target_arch = "x86_64"))]
 use hv_vmx::{VmxHostInit, VmxonRegion, VMXON_REGION_SIZE};
+use hv_vtd::install_vtd_domains;
 
 use crate::error::RuntimeError;
 
@@ -53,7 +53,10 @@ pub struct RuntimeInitReport {
 /// # Errors
 ///
 /// Returns [`RuntimeError`] when validation or table installation fails.
-pub fn initialize(boot_info: &BootInfo, plans: &GateCPlans) -> Result<RuntimeInitReport, RuntimeError> {
+pub fn initialize(
+    boot_info: &BootInfo,
+    plans: &GateCPlans,
+) -> Result<RuntimeInitReport, RuntimeError> {
     let total_bytes = boot_info.boot_info_bytes as usize;
     // SAFETY: loader guarantees `boot_info` points at `total_bytes` valid bytes.
     unsafe {
@@ -81,30 +84,17 @@ pub fn initialize(boot_info: &BootInfo, plans: &GateCPlans) -> Result<RuntimeIni
     phase = advance_phase(phase, BootPhase::PartitionsPrepared)?;
     phase = advance_phase(phase, BootPhase::Running)?;
 
-    Ok(RuntimeInitReport {
-        phase,
-        vmx_enabled,
-        ept_roots,
-        vtd_domains,
-    })
+    Ok(RuntimeInitReport { phase, vmx_enabled, ept_roots, vtd_domains })
 }
 
 fn advance_phase(current: BootPhase, next: BootPhase) -> Result<BootPhase, RuntimeError> {
-    current
-        .transition(next)
-        .map_err(|_| RuntimeError::TableRegionUnavailable)
+    current.transition(next).map_err(|_| RuntimeError::TableRegionUnavailable)
 }
 
 fn memory_descriptors(boot_info: &BootInfo) -> alloc::vec::Vec<(u32, HostPhysAddr, u64)> {
     let map = unsafe { layout::memory_map_slice(boot_info) };
     map.iter()
-        .map(|desc| {
-            (
-                desc.typ,
-                HostPhysAddr::new(desc.physical_start),
-                desc.number_of_bytes,
-            )
-        })
+        .map(|desc| (desc.typ, HostPhysAddr::new(desc.physical_start), desc.number_of_bytes))
         .collect()
 }
 
@@ -155,14 +145,10 @@ fn install_vtd_tables(plans: &GateCPlans) -> Result<usize, RuntimeError> {
         return Err(RuntimeError::TableRegionUnavailable);
     }
     let table_ptr = base as *mut u8;
-    let table_bytes = unsafe { core::slice::from_raw_parts_mut(table_ptr, VT_D_TABLE_REGION_BYTES) };
+    let table_bytes =
+        unsafe { core::slice::from_raw_parts_mut(table_ptr, VT_D_TABLE_REGION_BYTES) };
     let drhd = HostPhysAddr::new(DEFAULT_DRHD_BASE);
-    install_vtd_domains(
-        table_bytes,
-        plans.vtd_table_base,
-        &plans.vtd.domains,
-        drhd,
-    )?;
+    install_vtd_domains(table_bytes, plans.vtd_table_base, &plans.vtd.domains, drhd)?;
     Ok(plans.vtd.domains.len())
 }
 
@@ -176,7 +162,8 @@ fn enable_vmx(plans: &GateCPlans) -> Result<bool, RuntimeError> {
         if region_ptr.is_null() {
             return Err(RuntimeError::TableRegionUnavailable);
         }
-        let region_bytes = unsafe { core::slice::from_raw_parts_mut(region_ptr, VMXON_REGION_SIZE) };
+        let region_bytes =
+            unsafe { core::slice::from_raw_parts_mut(region_ptr, VMXON_REGION_SIZE) };
         region_bytes.copy_from_slice(region.as_bytes());
         // SAFETY: VMXON region is initialized and loader-reserved.
         unsafe {
@@ -219,12 +206,8 @@ mod tests {
             boot_info_bytes: 0,
         };
         let plans = GateCPlans {
-            ept: EptPlan {
-                partitions: alloc::vec::Vec::new(),
-            },
-            vtd: hv_vtd::VtdPlan {
-                domains: alloc::vec::Vec::new(),
-            },
+            ept: EptPlan { partitions: alloc::vec::Vec::new() },
+            vtd: hv_vtd::VtdPlan { domains: alloc::vec::Vec::new() },
             ept_table_base: HostPhysAddr::new(0x2000_0000),
             vtd_table_base: HostPhysAddr::new(0x2100_0000),
             vmxon_region_base: HostPhysAddr::new(0x2200_0000),

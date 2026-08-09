@@ -26,7 +26,7 @@ pub use boot::{BootPhase, BootTransitionError};
 pub use error::CoreError;
 
 #[cfg(feature = "std")]
-pub use observed::{ObservedCpuFeatures, ObservedPlatform, ObservedPciDevice};
+pub use observed::{ObservedCpuFeatures, ObservedPciDevice, ObservedPlatform};
 #[cfg(feature = "std")]
 pub use platform_ir::StaticPlatformIR;
 #[cfg(feature = "std")]

@@ -29,12 +29,7 @@ pub struct EptPageTable<'a> {
 
 impl<'a> EptPageTable<'a> {
     fn new(buffer: &'a mut [u8], buffer_hpa: HostPhysAddr) -> Self {
-        Self {
-            buffer,
-            buffer_hpa,
-            cursor: 0,
-            root_offset: None,
-        }
+        Self { buffer, buffer_hpa, cursor: 0, root_offset: None }
     }
 
     fn alloc_table(&mut self) -> Result<(usize, HostPhysAddr), EptPlanError> {
@@ -86,21 +81,11 @@ impl<'a> EptPageTable<'a> {
             return Ok((child_offset, HostPhysAddr::new(child_hpa)));
         }
         let (child_offset, child_hpa) = self.alloc_table()?;
-        self.write_entry(
-            table_offset,
-            index,
-            ept_pointer_entry(child_hpa.raw()),
-        );
+        self.write_entry(table_offset, index, ept_pointer_entry(child_hpa.raw()));
         Ok((child_offset, child_hpa))
     }
 
-    fn map_2m(
-        &mut self,
-        gpa: u64,
-        hpa: u64,
-        perms: u64,
-        memtype: u64,
-    ) -> Result<(), EptPlanError> {
+    fn map_2m(&mut self, gpa: u64, hpa: u64, perms: u64, memtype: u64) -> Result<(), EptPlanError> {
         let (root_offset, _) = self.ensure_root()?;
         let pml4_index = ((gpa >> 39) & 0x1FF) as usize;
         let pdpt_index = ((gpa >> 30) & 0x1FF) as usize;
@@ -112,13 +97,7 @@ impl<'a> EptPageTable<'a> {
         Ok(())
     }
 
-    fn map_4k(
-        &mut self,
-        gpa: u64,
-        hpa: u64,
-        perms: u64,
-        memtype: u64,
-    ) -> Result<(), EptPlanError> {
+    fn map_4k(&mut self, gpa: u64, hpa: u64, perms: u64, memtype: u64) -> Result<(), EptPlanError> {
         let (root_offset, _) = self.ensure_root()?;
         let pml4_index = ((gpa >> 39) & 0x1FF) as usize;
         let pdpt_index = ((gpa >> 30) & 0x1FF) as usize;
@@ -181,10 +160,7 @@ pub fn install_ept_mappings(
         table.map_range(mapping)?;
     }
     let (_, root_hpa) = table.root()?;
-    Ok(EptInstallResult {
-        root_hpa,
-        bytes_used: table.cursor,
-    })
+    Ok(EptInstallResult { root_hpa, bytes_used: table.cursor })
 }
 
 fn mapping_to_permissions(perms: EptPermissions) -> u64 {

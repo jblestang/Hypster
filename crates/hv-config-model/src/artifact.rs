@@ -30,10 +30,7 @@ impl GeneratedArtifacts {
         let intent = &compiled.intent;
         let hash = compiled.validated.config_hash.to_hex();
         let mut files = vec![
-            Artifact {
-                path: "config.sha256".into(),
-                contents: format!("{hash}\n"),
-            },
+            Artifact { path: "config.sha256".into(), contents: format!("{hash}\n") },
             Artifact {
                 path: "platform-requirements.txt".into(),
                 contents: render_platform_requirements(intent),
@@ -46,54 +43,21 @@ impl GeneratedArtifacts {
                 path: "static-platform.rs".into(),
                 contents: render_static_platform_rs(intent),
             },
-            Artifact {
-                path: "memory-map.txt".into(),
-                contents: render_memory_map(intent),
-            },
-            Artifact {
-                path: "cpu-topology.txt".into(),
-                contents: render_cpu_topology(intent),
-            },
-            Artifact {
-                path: "core-ownership.txt".into(),
-                contents: render_core_ownership(intent),
-            },
-            Artifact {
-                path: "ept-map.txt".into(),
-                contents: render_ept_map(intent),
-            },
-            Artifact {
-                path: "vtd-map.txt".into(),
-                contents: render_vtd_map(intent),
-            },
-            Artifact {
-                path: "pci-map.txt".into(),
-                contents: render_pci_map(intent),
-            },
-            Artifact {
-                path: "ipc-map.txt".into(),
-                contents: render_ipc_map(intent),
-            },
-            Artifact {
-                path: "irq-map.txt".into(),
-                contents: render_irq_map(intent),
-            },
-            Artifact {
-                path: "qemu-args.txt".into(),
-                contents: render_qemu_args(intent),
-            },
-            Artifact {
-                path: "boot-layout.txt".into(),
-                contents: render_boot_layout(intent),
-            },
+            Artifact { path: "memory-map.txt".into(), contents: render_memory_map(intent) },
+            Artifact { path: "cpu-topology.txt".into(), contents: render_cpu_topology(intent) },
+            Artifact { path: "core-ownership.txt".into(), contents: render_core_ownership(intent) },
+            Artifact { path: "ept-map.txt".into(), contents: render_ept_map(intent) },
+            Artifact { path: "vtd-map.txt".into(), contents: render_vtd_map(intent) },
+            Artifact { path: "pci-map.txt".into(), contents: render_pci_map(intent) },
+            Artifact { path: "ipc-map.txt".into(), contents: render_ipc_map(intent) },
+            Artifact { path: "irq-map.txt".into(), contents: render_irq_map(intent) },
+            Artifact { path: "qemu-args.txt".into(), contents: render_qemu_args(intent) },
+            Artifact { path: "boot-layout.txt".into(), contents: render_boot_layout(intent) },
             Artifact {
                 path: "boot-manifest.txt".into(),
                 contents: render_boot_manifest(intent, &hash),
             },
-            Artifact {
-                path: "guest-images.txt".into(),
-                contents: render_guest_images(intent),
-            },
+            Artifact { path: "guest-images.txt".into(), contents: render_guest_images(intent) },
             Artifact {
                 path: "build-manifest.txt".into(),
                 contents: render_build_manifest(intent, &hash),
@@ -117,18 +81,12 @@ fn render_platform_requirements(intent: &StaticIntentIR) -> String {
     out.push_str(&format!("total_partition_vcpus={}\n", req.total_partition_vcpus));
     out.push_str(&format!("smt_policy={:?}\n", req.smt_policy));
     out.push_str(&format!("min_ram_bytes={}\n", req.min_ram_bytes));
-    out.push_str(&format!(
-        "total_partition_ram_bytes={}\n",
-        req.total_partition_ram_bytes
-    ));
+    out.push_str(&format!("total_partition_ram_bytes={}\n", req.total_partition_ram_bytes));
     out.push_str(&format!("interrupt_remapping={:?}\n", req.interrupt_remapping));
     out.push_str(&format!("x2apic={:?}\n", req.x2apic));
     out.push_str(&format!("invariant_tsc={:?}\n", req.invariant_tsc));
     out.push_str(&format!("vpid={:?}\n", req.vpid));
-    out.push_str(&format!(
-        "vmx_preemption_timer={:?}\n",
-        req.vmx_preemption_timer
-    ));
+    out.push_str(&format!("vmx_preemption_timer={:?}\n", req.vmx_preemption_timer));
     out.push_str(&format!("nx={:?}\n", req.nx));
     out.push_str("page_sizes=");
     for (idx, size) in req.page_sizes.iter().enumerate() {
@@ -175,10 +133,7 @@ fn render_static_platform_rs(intent: &StaticIntentIR) -> String {
         out.push_str(&format!("        vcpus: {},\n", partition.vcpus));
         out.push_str(&format!("        memory_bytes: {},\n", partition.memory_bytes));
         out.push_str(&format!("        image: {},\n", json_str(&partition.image)));
-        out.push_str(&format!(
-            "        iommu_domain: {},\n",
-            partition.iommu_domain.raw()
-        ));
+        out.push_str(&format!("        iommu_domain: {},\n", partition.iommu_domain.raw()));
         out.push_str("    },\n");
     }
     out.push_str("];\n\n");
@@ -224,10 +179,7 @@ fn render_cpu_topology(intent: &StaticIntentIR) -> String {
         "platform_min_physical_cores={}\n",
         intent.platform_requirements.min_physical_cores
     ));
-    out.push_str(&format!(
-        "smt_policy={:?}\n",
-        intent.platform_requirements.smt_policy
-    ));
+    out.push_str(&format!("smt_policy={:?}\n", intent.platform_requirements.smt_policy));
     for partition in &intent.partitions {
         out.push_str(&format!(
             "partition vm{} name={} vcpus={}\n",
@@ -381,10 +333,7 @@ fn render_boot_layout(intent: &StaticIntentIR) -> String {
     out.push_str("# Boot layout intent\n");
     out.push_str(&format!("loader={}\n", intent.boot.loader));
     out.push_str(&format!("hypervisor={}\n", intent.boot.hypervisor));
-    out.push_str(&format!(
-        "exit_boot_services={}\n",
-        intent.boot.exit_boot_services
-    ));
+    out.push_str(&format!("exit_boot_services={}\n", intent.boot.exit_boot_services));
     out
 }
 

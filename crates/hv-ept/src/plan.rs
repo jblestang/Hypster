@@ -25,9 +25,7 @@ pub fn plan_ept(intent: &StaticIntentIR, memory: &MemoryPlan) -> Result<EptPlan,
             )
         });
         let Some(backing) = backing else {
-            return Err(EptPlanError::MissingGuestRam {
-                vm_id: partition.vm_id.raw(),
-            });
+            return Err(EptPlanError::MissingGuestRam { vm_id: partition.vm_id.raw() });
         };
         let mapping = EptMapping {
             guest_phys: GuestPhysAddr::new(0),
@@ -38,10 +36,7 @@ pub fn plan_ept(intent: &StaticIntentIR, memory: &MemoryPlan) -> Result<EptPlan,
         };
         let mappings = vec![mapping];
         validate_partition(partition.vm_id, &mappings)?;
-        partitions.push(EptPartitionPlan {
-            vm_id: partition.vm_id,
-            mappings,
-        });
+        partitions.push(EptPartitionPlan { vm_id: partition.vm_id, mappings });
     }
     Ok(EptPlan { partitions })
 }
@@ -55,12 +50,11 @@ fn validate_partition(vm_id: VmId, mappings: &[EptMapping]) -> Result<(), EptPla
                 right.guest_phys.raw(),
                 right.size,
             ) {
-                return Err(EptPlanError::MappingOverlap {
-                    vm_id: vm_id.raw(),
-                });
+                return Err(EptPlanError::MappingOverlap { vm_id: vm_id.raw() });
             }
         }
-        let _ = checked_add_u64(left.guest_phys.raw(), left.size).map_err(|_| EptPlanError::Overflow)?;
+        let _ = checked_add_u64(left.guest_phys.raw(), left.size)
+            .map_err(|_| EptPlanError::Overflow)?;
     }
     Ok(())
 }

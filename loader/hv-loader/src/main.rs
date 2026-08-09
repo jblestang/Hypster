@@ -2,13 +2,12 @@
 
 #![no_main]
 #![no_std]
+#![allow(unsafe_code)] // UEFI memory map, handoff jump, and firmware allocations.
 
 extern crate alloc;
 
 mod boot_info;
 mod handoff;
-
-use core::panic::PanicInfo;
 
 use uefi::allocator::Allocator;
 use uefi::prelude::*;
@@ -21,8 +20,9 @@ use handoff::jump_to_hypervisor;
 #[global_allocator]
 static GLOBAL: Allocator = Allocator;
 
+#[cfg(not(test))]
 #[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
+fn panic(_info: &core::panic::PanicInfo) -> ! {
     loop {
         core::hint::spin_loop();
     }
@@ -61,12 +61,7 @@ fn main(_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
         Err(_) => return Status::OUT_OF_RESOURCES,
     };
 
-    let blob = match build_boot_info_blob(
-        boot_services,
-        &memory_map,
-        rsdp_address,
-        hypervisor,
-    ) {
+    let blob = match build_boot_info_blob(boot_services, &memory_map, rsdp_address, hypervisor) {
         Ok(blob) => blob,
         Err(status) => return status,
     };

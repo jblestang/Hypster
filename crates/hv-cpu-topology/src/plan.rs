@@ -45,10 +45,7 @@ pub fn plan_cpu(
     let required_cores: u32 = intent.partitions.iter().map(|p| p.vcpus).sum();
     let available = topology.physical_core_count();
     if required_cores > available {
-        return Err(CpuTopologyError::InsufficientCores {
-            required: required_cores,
-            available,
-        });
+        return Err(CpuTopologyError::InsufficientCores { required: required_cores, available });
     }
 
     let mut assignments = Vec::with_capacity(intent.partitions.len());
@@ -62,10 +59,7 @@ pub fn plan_cpu(
         let core = topology
             .cores
             .get(idx)
-            .ok_or(CpuTopologyError::InsufficientCores {
-                required: required_cores,
-                available,
-            })?;
+            .ok_or(CpuTopologyError::InsufficientCores { required: required_cores, available })?;
         let bootstrap = match core.logical_cpus.first() {
             Some(id) => *id,
             None => {

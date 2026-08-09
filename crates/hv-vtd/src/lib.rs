@@ -16,9 +16,7 @@ pub mod plan;
 pub mod table;
 
 pub use error::VtdPlanError;
-pub use install::{
-    install_vtd_domains, VtdContextTables, VtdHardwareState, VtdInstallResult,
-};
+pub use install::{install_vtd_domains, VtdContextTables, VtdHardwareState, VtdInstallResult};
 pub use model::{ObservedPciDevice, VtdDomainPlan, VtdMapping, VtdPlan};
 #[cfg(feature = "plan")]
 pub use plan::plan_vtd;

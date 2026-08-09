@@ -63,9 +63,7 @@ fn raw_probe() -> Option<CpuFeatures> {
             let leaf_ext = cpuid(0x8000_0001)?;
             let nx = nx_leaf1 || (leaf_ext.edx & (1 << 20)) != 0;
             let ept = if max_ext >= 0x8000_0008 {
-                cpuid(0x8000_0008)
-                    .map(|leaf| (leaf.ebx & (1 << 0)) != 0)
-                    .unwrap_or(vmx)
+                cpuid(0x8000_0008).map(|leaf| (leaf.ebx & (1 << 0)) != 0).unwrap_or(vmx)
             } else {
                 vmx
             };
@@ -93,12 +91,7 @@ struct CpuidLeaf {
 #[cfg(target_arch = "x86_64")]
 fn cpuid(leaf: u32) -> Option<CpuidLeaf> {
     let result = unsafe { core::arch::x86_64::__cpuid(leaf) };
-    Some(CpuidLeaf {
-        eax: result.eax,
-        ebx: result.ebx,
-        ecx: result.ecx,
-        edx: result.edx,
-    })
+    Some(CpuidLeaf { eax: result.eax, ebx: result.ebx, ecx: result.ecx, edx: result.edx })
 }
 
 #[cfg(not(target_arch = "x86_64"))]

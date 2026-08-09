@@ -34,28 +34,19 @@ impl VmxHostInit {
     ///
     /// Returns [`VmxError::CapabilitiesUnavailable`] when MSRs cannot be read.
     pub fn from_hardware() -> Result<Self, VmxError> {
-        Ok(Self {
-            state: VmxHostState::Initial,
-            caps: VmxCapabilities::from_hardware()?,
-        })
+        Ok(Self { state: VmxHostState::Initial, caps: VmxCapabilities::from_hardware()? })
     }
 
     /// Creates a host init context from assumed QEMU capabilities (tests).
     #[must_use]
     pub const fn from_assumed_qemu() -> Self {
-        Self {
-            state: VmxHostState::Initial,
-            caps: VmxCapabilities::from_assumed_qemu(),
-        }
+        Self { state: VmxHostState::Initial, caps: VmxCapabilities::from_assumed_qemu() }
     }
 
     /// Creates a host init context with explicit capabilities.
     #[must_use]
     pub const fn new(caps: VmxCapabilities) -> Self {
-        Self {
-            state: VmxHostState::Initial,
-            caps,
-        }
+        Self { state: VmxHostState::Initial, caps }
     }
 
     /// Returns the current state.

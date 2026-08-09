@@ -28,7 +28,7 @@ pub mod segment;
 
 pub use error::ElfError;
 pub use header::{
-    EI_CLASS, EI_DATA, ELF_MAGIC, ELF64_EHDR_SIZE, ELF64_PHDR_SIZE, ELFCLASS64, ELFDATA2LSB,
+    EI_CLASS, EI_DATA, ELF64_EHDR_SIZE, ELF64_PHDR_SIZE, ELFCLASS64, ELFDATA2LSB, ELF_MAGIC,
     EM_X86_64,
 };
 pub use segment::{Elf64Segment, PF_R, PF_W, PF_X, PT_LOAD};
@@ -108,10 +108,10 @@ pub fn parse_elf64(data: &[u8]) -> Result<Elf64<'_>, ElfError> {
 
     let mut segments = Vec::with_capacity(phnum_usize);
     for index in 0..phnum_usize {
-        let header_offset = checked_add_usize(phoff_usize, index * ELF64_PHDR_SIZE)
-            .map_err(map_arithmetic)?;
-        let header_end = checked_add_usize(header_offset, ELF64_PHDR_SIZE)
-            .map_err(map_arithmetic)?;
+        let header_offset =
+            checked_add_usize(phoff_usize, index * ELF64_PHDR_SIZE).map_err(map_arithmetic)?;
+        let header_end =
+            checked_add_usize(header_offset, ELF64_PHDR_SIZE).map_err(map_arithmetic)?;
         if header_end > data.len() {
             return Err(ElfError::ProgramHeaderOutOfBounds { index });
         }
@@ -123,19 +123,12 @@ pub fn parse_elf64(data: &[u8]) -> Result<Elf64<'_>, ElfError> {
 
     validate_load_segment_overlaps(&segments)?;
 
-    Ok(Elf64 {
-        data,
-        entry_point,
-        segments,
-    })
+    Ok(Elf64 { data, entry_point, segments })
 }
 
 fn validate_ident(data: &[u8]) -> Result<(), ElfError> {
     if data.len() < ELF64_EHDR_SIZE {
-        return Err(ElfError::BufferTooShort {
-            needed: ELF64_EHDR_SIZE,
-            available: data.len(),
-        });
+        return Err(ElfError::BufferTooShort { needed: ELF64_EHDR_SIZE, available: data.len() });
     }
 
     if data[0..4] != ELF_MAGIC {
@@ -202,12 +195,7 @@ fn validate_load_segment_overlaps(segments: &[Elf64Segment]) -> Result<(), ElfEr
             if !right.is_load() || right.mem_size == 0 {
                 continue;
             }
-            if ranges_overlap_u64(
-                left.virt_addr,
-                left.mem_size,
-                right.virt_addr,
-                right.mem_size,
-            ) {
+            if ranges_overlap_u64(left.virt_addr, left.mem_size, right.virt_addr, right.mem_size) {
                 return Err(ElfError::SegmentOverlap { first, second });
             }
         }
@@ -238,10 +226,7 @@ fn read_u64_le(data: &[u8], offset: usize) -> Result<u64, ElfError> {
 fn ensure_bytes(data: &[u8], offset: usize, len: usize) -> Result<(), ElfError> {
     let end = checked_add_usize(offset, len).map_err(map_arithmetic)?;
     if end > data.len() {
-        return Err(ElfError::BufferTooShort {
-            needed: end,
-            available: data.len(),
-        });
+        return Err(ElfError::BufferTooShort { needed: end, available: data.len() });
     }
     Ok(())
 }
@@ -274,12 +259,7 @@ mod tests {
         buf[offset..offset + 8].copy_from_slice(&value.to_le_bytes());
     }
 
-    fn write_header(
-        buf: &mut [u8],
-        entry: u64,
-        phoff: u64,
-        phnum: u16,
-    ) {
+    fn write_header(buf: &mut [u8], entry: u64, phoff: u64, phnum: u16) {
         buf[0..4].copy_from_slice(&ELF_MAGIC);
         buf[EI_CLASS] = ELFCLASS64;
         buf[EI_DATA] = ELFDATA2LSB;
@@ -317,15 +297,7 @@ mod tests {
         let mut image = alloc::vec::Vec::with_capacity(total);
         image.resize(total, 0);
         write_header(&mut image, 0x1000, phoff, 1);
-        write_load_phdr(
-            &mut image,
-            ELF64_EHDR_SIZE,
-            file_offset,
-            0x1000,
-            4,
-            4,
-            PF_R | PF_X,
-        );
+        write_load_phdr(&mut image, ELF64_EHDR_SIZE, file_offset, 0x1000, 4, 4, PF_R | PF_X);
         image[file_offset as usize..total].copy_from_slice(&[0x90, 0x90, 0x90, 0xC3]);
         image
     }
@@ -348,13 +320,7 @@ mod tests {
     #[test]
     fn rejects_truncated_header() {
         let err = parse_elf64(&[0x7f, b'E', b'L']).expect_err("short buffer");
-        assert!(matches!(
-            err,
-            ElfError::BufferTooShort {
-                needed: ELF64_EHDR_SIZE,
-                available: 3
-            }
-        ));
+        assert!(matches!(err, ElfError::BufferTooShort { needed: ELF64_EHDR_SIZE, available: 3 }));
     }
 
     #[test]
@@ -368,70 +334,49 @@ mod tests {
     fn rejects_non_64_bit_class() {
         let mut image = minimal_valid_elf();
         image[EI_CLASS] = 1;
-        assert_eq!(
-            parse_elf64(&image),
-            Err(ElfError::UnsupportedClass { found: 1 })
-        );
+        assert_eq!(parse_elf64(&image), Err(ElfError::UnsupportedClass { found: 1 }));
     }
 
     #[test]
     fn rejects_big_endian() {
         let mut image = minimal_valid_elf();
         image[EI_DATA] = 2;
-        assert_eq!(
-            parse_elf64(&image),
-            Err(ElfError::UnsupportedEndianness { found: 2 })
-        );
+        assert_eq!(parse_elf64(&image), Err(ElfError::UnsupportedEndianness { found: 2 }));
     }
 
     #[test]
     fn rejects_non_x86_64_machine() {
         let mut image = minimal_valid_elf();
         write_u16_le(&mut image, E_MACHINE_OFFSET, 0xB7); // EM_AARCH64
-        assert_eq!(
-            parse_elf64(&image),
-            Err(ElfError::UnsupportedMachine { found: 0xB7 })
-        );
+        assert_eq!(parse_elf64(&image), Err(ElfError::UnsupportedMachine { found: 0xB7 }));
     }
 
     #[test]
     fn rejects_zero_program_headers() {
         let mut image = minimal_valid_elf();
         write_u16_le(&mut image, E_PHNUM_OFFSET, 0);
-        assert_eq!(
-            parse_elf64(&image),
-            Err(ElfError::ProgramHeaderTableOutOfBounds)
-        );
+        assert_eq!(parse_elf64(&image), Err(ElfError::ProgramHeaderTableOutOfBounds));
     }
 
     #[test]
     fn rejects_program_header_table_out_of_bounds() {
         let mut image = minimal_valid_elf();
         write_u64_le(&mut image, E_PHOFF_OFFSET, 0x1000);
-        assert_eq!(
-            parse_elf64(&image),
-            Err(ElfError::ProgramHeaderTableOutOfBounds)
-        );
+        assert_eq!(parse_elf64(&image), Err(ElfError::ProgramHeaderTableOutOfBounds));
     }
 
     #[test]
     fn rejects_invalid_program_header_entry_size() {
         let mut image = minimal_valid_elf();
         write_u16_le(&mut image, E_PHENTSIZE_OFFSET, 32);
-        assert_eq!(
-            parse_elf64(&image),
-            Err(ElfError::InvalidProgramHeaderEntrySize { found: 32 })
-        );
+        assert_eq!(parse_elf64(&image), Err(ElfError::InvalidProgramHeaderEntrySize { found: 32 }));
     }
 
     #[test]
     fn rejects_segment_file_data_out_of_bounds() {
         let mut image = minimal_valid_elf();
         write_u64_le(&mut image, ELF64_EHDR_SIZE + 32, 0x1000);
-        assert_eq!(
-            parse_elf64(&image),
-            Err(ElfError::SegmentFileDataOutOfBounds { index: 0 })
-        );
+        assert_eq!(parse_elf64(&image), Err(ElfError::SegmentFileDataOutOfBounds { index: 0 }));
     }
 
     #[test]
@@ -442,15 +387,7 @@ mod tests {
         let mut image = alloc::vec::Vec::with_capacity(total);
         image.resize(total, 0);
         write_header(&mut image, 0x2000, phoff, 2);
-        write_load_phdr(
-            &mut image,
-            ELF64_EHDR_SIZE,
-            file_offset,
-            0x1000,
-            4,
-            0x1000,
-            PF_R | PF_X,
-        );
+        write_load_phdr(&mut image, ELF64_EHDR_SIZE, file_offset, 0x1000, 4, 0x1000, PF_R | PF_X);
         write_load_phdr(
             &mut image,
             ELF64_EHDR_SIZE + ELF64_PHDR_SIZE,
@@ -462,13 +399,7 @@ mod tests {
         );
         image[file_offset as usize..total].copy_from_slice(&[0; 8]);
 
-        assert_eq!(
-            parse_elf64(&image),
-            Err(ElfError::SegmentOverlap {
-                first: 0,
-                second: 1
-            })
-        );
+        assert_eq!(parse_elf64(&image), Err(ElfError::SegmentOverlap { first: 0, second: 1 }));
     }
 
     #[test]
@@ -479,15 +410,7 @@ mod tests {
         let mut image = alloc::vec::Vec::with_capacity(total);
         image.resize(total, 0);
         write_header(&mut image, 0x1000, phoff, 2);
-        write_load_phdr(
-            &mut image,
-            ELF64_EHDR_SIZE,
-            file_offset,
-            0x1000,
-            4,
-            0x1000,
-            PF_R | PF_X,
-        );
+        write_load_phdr(&mut image, ELF64_EHDR_SIZE, file_offset, 0x1000, 4, 0x1000, PF_R | PF_X);
         write_load_phdr(
             &mut image,
             ELF64_EHDR_SIZE + ELF64_PHDR_SIZE,
@@ -508,9 +431,6 @@ mod tests {
         let mut image = minimal_valid_elf();
         write_u64_le(&mut image, ELF64_EHDR_SIZE + 8, u64::MAX);
         write_u64_le(&mut image, ELF64_EHDR_SIZE + 32, 1);
-        assert_eq!(
-            parse_elf64(&image),
-            Err(ElfError::SegmentFileDataOutOfBounds { index: 0 })
-        );
+        assert_eq!(parse_elf64(&image), Err(ElfError::SegmentFileDataOutOfBounds { index: 0 }));
     }
 }

@@ -2,6 +2,7 @@
 
 #![no_std]
 #![no_main]
+#![allow(unsafe_code)]
 
 extern crate alloc;
 

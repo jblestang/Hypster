@@ -14,7 +14,7 @@
 #![no_std]
 #![warn(missing_docs)]
 
-use hv_types::{GuestPhysAddr, VmId, VcpuId};
+use hv_types::{GuestPhysAddr, VcpuId, VmId};
 
 /// Major guest ABI version.
 pub const GUEST_ABI_VERSION_MAJOR: u16 = 1;
@@ -46,8 +46,7 @@ impl GuestBootInfoHeader {
     /// Returns true when the header matches the compiled ABI major version.
     #[must_use]
     pub const fn is_compatible(&self) -> bool {
-        self.magic == GUEST_BOOT_INFO_MAGIC
-            && self.version_major == GUEST_ABI_VERSION_MAJOR
+        self.magic == GUEST_BOOT_INFO_MAGIC && self.version_major == GUEST_ABI_VERSION_MAJOR
     }
 
     /// Returns the typed VM identifier.

@@ -32,8 +32,8 @@ impl VmxCapabilities {
     /// Returns [`VmxError::CapabilitiesUnavailable`] when MSRs cannot be read.
     pub fn from_hardware() -> Result<Self, VmxError> {
         // SAFETY: VMX capability MSRs are architecturally defined on VMX-capable CPUs.
-        let basic = unsafe { hv_x86::read_msr(IA32_VMX_BASIC) }
-            .ok_or(VmxError::CapabilitiesUnavailable)?;
+        let basic =
+            unsafe { hv_x86::read_msr(IA32_VMX_BASIC) }.ok_or(VmxError::CapabilitiesUnavailable)?;
         let cr0_fixed0 = unsafe { hv_x86::read_msr(IA32_VMX_CR0_FIXED0) }
             .ok_or(VmxError::CapabilitiesUnavailable)?;
         let cr0_fixed1 = unsafe { hv_x86::read_msr(IA32_VMX_CR0_FIXED1) }
@@ -74,14 +74,7 @@ impl VmxCapabilities {
     ) -> Self {
         let revision_id = (basic & 0x7FFF_FFFF) as u32;
         let region_size = 4096;
-        Self {
-            revision_id,
-            region_size,
-            cr0_fixed0,
-            cr0_fixed1,
-            cr4_fixed0,
-            cr4_fixed1,
-        }
+        Self { revision_id, region_size, cr0_fixed0, cr0_fixed1, cr4_fixed0, cr4_fixed1 }
     }
 }
 

@@ -21,12 +21,8 @@ pub const VMXON_REGION_BASE: HostPhysAddr = HostPhysAddr::new(0x2200_0000);
 #[must_use]
 pub fn gate_c_plans() -> GateCPlans {
     GateCPlans {
-        ept: EptPlan {
-            partitions: alloc::vec::Vec::new(),
-        },
-        vtd: VtdPlan {
-            domains: alloc::vec::Vec::new(),
-        },
+        ept: EptPlan { partitions: alloc::vec::Vec::new() },
+        vtd: VtdPlan { domains: alloc::vec::Vec::new() },
         ept_table_base: EPT_TABLE_BASE,
         vtd_table_base: VTD_TABLE_BASE,
         vmxon_region_base: VMXON_REGION_BASE,

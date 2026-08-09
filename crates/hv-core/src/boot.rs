@@ -107,8 +107,6 @@ mod tests {
 
     #[test]
     fn invalid_transition_is_rejected() {
-        assert!(BootPhase::Firmware
-            .transition(BootPhase::Running)
-            .is_err());
+        assert!(BootPhase::Firmware.transition(BootPhase::Running).is_err());
     }
 }

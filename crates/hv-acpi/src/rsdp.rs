@@ -49,12 +49,7 @@ pub fn parse_rsdp(data: &[u8]) -> Result<Rsdp, AcpiError> {
         if found != expected {
             return Err(AcpiError::InvalidSignature {
                 expected: "RSD PTR ",
-                found: [
-                    read_u8(data, 0)?,
-                    read_u8(data, 1)?,
-                    read_u8(data, 2)?,
-                    read_u8(data, 3)?,
-                ],
+                found: [read_u8(data, 0)?, read_u8(data, 1)?, read_u8(data, 2)?, read_u8(data, 3)?],
             });
         }
     }
@@ -63,39 +58,21 @@ pub fn parse_rsdp(data: &[u8]) -> Result<Rsdp, AcpiError> {
 
     let revision = read_u8(data, 15)?;
     let rsdt_phys = read_u32_le(data, 16)?;
-    let rsdt_address = if rsdt_phys == 0 {
-        None
-    } else {
-        Some(HostPhysAddr::new(u64::from(rsdt_phys)))
-    };
+    let rsdt_address =
+        if rsdt_phys == 0 { None } else { Some(HostPhysAddr::new(u64::from(rsdt_phys))) };
 
     if revision >= 2 {
         ensure_len(data, RSDP_V2_LEN)?;
         let length = read_u32_le(data, 20)?;
         if length as usize != RSDP_V2_LEN {
-            return Err(AcpiError::InvalidLength {
-                context: "RSDP",
-                length,
-            });
+            return Err(AcpiError::InvalidLength { context: "RSDP", length });
         }
         validate_checksum(&data[..RSDP_V2_LEN])?;
         let xsdt_phys = read_u64_le(data, 24)?;
-        let xsdt_address = if xsdt_phys == 0 {
-            None
-        } else {
-            Some(HostPhysAddr::new(xsdt_phys))
-        };
-        Ok(Rsdp {
-            revision,
-            rsdt_address,
-            xsdt_address,
-        })
+        let xsdt_address = if xsdt_phys == 0 { None } else { Some(HostPhysAddr::new(xsdt_phys)) };
+        Ok(Rsdp { revision, rsdt_address, xsdt_address })
     } else {
-        Ok(Rsdp {
-            revision,
-            rsdt_address,
-            xsdt_address: None,
-        })
+        Ok(Rsdp { revision, rsdt_address, xsdt_address: None })
     }
 }
 
@@ -123,18 +100,9 @@ mod tests {
 
         let rsdp = parse_rsdp(&table).expect("valid RSDP fixture");
         assert_eq!(rsdp.revision, 2);
-        assert_eq!(
-            rsdp.rsdt_address,
-            Some(HostPhysAddr::new(0x1000))
-        );
-        assert_eq!(
-            rsdp.xsdt_address,
-            Some(HostPhysAddr::new(0x2000))
-        );
-        assert_eq!(
-            rsdp.root_table_address(),
-            Some(HostPhysAddr::new(0x2000))
-        );
+        assert_eq!(rsdp.rsdt_address, Some(HostPhysAddr::new(0x1000)));
+        assert_eq!(rsdp.xsdt_address, Some(HostPhysAddr::new(0x2000)));
+        assert_eq!(rsdp.root_table_address(), Some(HostPhysAddr::new(0x2000)));
     }
 
     #[test]

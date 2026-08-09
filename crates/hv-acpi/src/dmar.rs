@@ -6,7 +6,7 @@ use hv_types::{HostPhysAddr, PciSegment};
 
 use crate::error::AcpiError;
 use crate::table::{
-    parse_sdt_header, read_u16_le, read_u64_le, read_u8, SDT_HEADER_LEN, SdtHeader,
+    parse_sdt_header, read_u16_le, read_u64_le, read_u8, SdtHeader, SDT_HEADER_LEN,
 };
 
 /// DMAR signature.
@@ -71,17 +71,11 @@ impl DmarSummary {
 pub fn parse_dmar(data: &[u8]) -> Result<DmarSummary, AcpiError> {
     let header = parse_sdt_header(data)?;
     if header.signature != DMAR_SIGNATURE {
-        return Err(AcpiError::InvalidSignature {
-            expected: "DMAR",
-            found: header.signature,
-        });
+        return Err(AcpiError::InvalidSignature { expected: "DMAR", found: header.signature });
     }
     let table_len = header.length as usize;
     if table_len < SDT_HEADER_LEN + DMAR_BODY_LEN {
-        return Err(AcpiError::InvalidLength {
-            context: "DMAR",
-            length: header.length,
-        });
+        return Err(AcpiError::InvalidLength { context: "DMAR", length: header.length });
     }
 
     let host_address_width = read_u8(data, SDT_HEADER_LEN)?;
@@ -100,9 +94,8 @@ pub fn parse_dmar(data: &[u8]) -> Result<DmarSummary, AcpiError> {
                 reason: "zero-length structure",
             });
         }
-        let end = offset
-            .checked_add(usize::from(structure_len))
-            .ok_or(AcpiError::InvalidStructure {
+        let end =
+            offset.checked_add(usize::from(structure_len)).ok_or(AcpiError::InvalidStructure {
                 kind: "DMAR structure",
                 reason: "structure length overflow",
             })?;
@@ -133,12 +126,7 @@ pub fn parse_dmar(data: &[u8]) -> Result<DmarSummary, AcpiError> {
         offset = end;
     }
 
-    Ok(DmarSummary {
-        header,
-        host_address_width,
-        interrupt_remapping,
-        drhd_entries,
-    })
+    Ok(DmarSummary { header, host_address_width, interrupt_remapping, drhd_entries })
 }
 
 #[cfg(test)]
@@ -182,10 +170,7 @@ mod tests {
         assert!(dmar.interrupt_remapping);
         assert_eq!(dmar.drhd_entries.len(), 1);
         assert_eq!(dmar.drhd_entries[0].segment, PciSegment::new(1));
-        assert_eq!(
-            dmar.drhd_entries[0].register_base,
-            HostPhysAddr::new(0xFED9_0000)
-        );
+        assert_eq!(dmar.drhd_entries[0].register_base, HostPhysAddr::new(0xFED9_0000));
         assert!(dmar.drhd_entries[0].include_all_pci);
     }
 

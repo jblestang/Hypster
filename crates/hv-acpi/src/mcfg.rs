@@ -6,7 +6,7 @@ use hv_types::{HostPhysAddr, PciBus, PciSegment};
 
 use crate::error::AcpiError;
 use crate::table::{
-    parse_sdt_header, read_u16_le, read_u64_le, read_u8, SDT_HEADER_LEN, SdtHeader,
+    parse_sdt_header, read_u16_le, read_u64_le, read_u8, SdtHeader, SDT_HEADER_LEN,
 };
 
 /// MCFG signature.
@@ -35,9 +35,7 @@ impl McfgEntry {
     /// Returns the inclusive number of buses covered by this entry.
     #[must_use]
     pub fn bus_count(&self) -> u16 {
-        u16::from(self.end_bus.raw())
-            .wrapping_sub(u16::from(self.start_bus.raw()))
-            .wrapping_add(1)
+        u16::from(self.end_bus.raw()).wrapping_sub(u16::from(self.start_bus.raw())).wrapping_add(1)
     }
 }
 
@@ -67,18 +65,12 @@ impl McfgSummary {
 pub fn parse_mcfg(data: &[u8]) -> Result<McfgSummary, AcpiError> {
     let header = parse_sdt_header(data)?;
     if header.signature != MCFG_SIGNATURE {
-        return Err(AcpiError::InvalidSignature {
-            expected: "MCFG",
-            found: header.signature,
-        });
+        return Err(AcpiError::InvalidSignature { expected: "MCFG", found: header.signature });
     }
     let table_len = header.length as usize;
     let min_len = SDT_HEADER_LEN + MCFG_RESERVED_LEN;
     if table_len < min_len {
-        return Err(AcpiError::InvalidLength {
-            context: "MCFG",
-            length: header.length,
-        });
+        return Err(AcpiError::InvalidLength { context: "MCFG", length: header.length });
     }
 
     let body_len = table_len - min_len;
@@ -102,12 +94,7 @@ pub fn parse_mcfg(data: &[u8]) -> Result<McfgSummary, AcpiError> {
                 reason: "end bus is less than start bus",
             });
         }
-        entries.push(McfgEntry {
-            base_address,
-            segment,
-            start_bus,
-            end_bus,
-        });
+        entries.push(McfgEntry { base_address, segment, start_bus, end_bus });
         offset += MCFG_ENTRY_LEN;
     }
 

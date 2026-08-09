@@ -84,11 +84,10 @@ impl ObservedPlatform {
         physical_core_count: u32,
     ) -> Option<Self> {
         let conventional_memory = collect_conventional(memory_descriptors);
-        let conventional_ram_bytes = hv_memory::map::total_conventional_bytes(&conventional_memory)?;
-        let enabled_processors = acpi
-            .enabled_processor_count()
-            .map(|count| count as u32)
-            .unwrap_or(physical_core_count);
+        let conventional_ram_bytes =
+            hv_memory::map::total_conventional_bytes(&conventional_memory)?;
+        let enabled_processors =
+            acpi.enabled_processor_count().map(|count| count as u32).unwrap_or(physical_core_count);
         Some(Self {
             arch: ArchRequirement::X86_64,
             cpu,

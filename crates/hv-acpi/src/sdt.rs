@@ -5,7 +5,7 @@ use alloc::vec::Vec;
 use hv_types::HostPhysAddr;
 
 use crate::error::AcpiError;
-use crate::table::{parse_sdt_header, read_u32_le, read_u64_le, SDT_HEADER_LEN, SdtHeader};
+use crate::table::{parse_sdt_header, read_u32_le, read_u64_le, SdtHeader, SDT_HEADER_LEN};
 
 /// RSDT signature.
 pub const RSDT_SIGNATURE: [u8; 4] = *b"RSDT";
@@ -38,10 +38,7 @@ pub struct Xsdt {
 pub fn parse_rsdt(data: &[u8]) -> Result<Rsdt, AcpiError> {
     let header = parse_sdt_header(data)?;
     if header.signature != RSDT_SIGNATURE {
-        return Err(AcpiError::InvalidSignature {
-            expected: "RSDT",
-            found: header.signature,
-        });
+        return Err(AcpiError::InvalidSignature { expected: "RSDT", found: header.signature });
     }
     let table_len = header.length as usize;
     let body = table_len.saturating_sub(SDT_HEADER_LEN);
@@ -71,10 +68,7 @@ pub fn parse_rsdt(data: &[u8]) -> Result<Rsdt, AcpiError> {
 pub fn parse_xsdt(data: &[u8]) -> Result<Xsdt, AcpiError> {
     let header = parse_sdt_header(data)?;
     if header.signature != XSDT_SIGNATURE {
-        return Err(AcpiError::InvalidSignature {
-            expected: "XSDT",
-            found: header.signature,
-        });
+        return Err(AcpiError::InvalidSignature { expected: "XSDT", found: header.signature });
     }
     let table_len = header.length as usize;
     let body = table_len.saturating_sub(SDT_HEADER_LEN);
@@ -141,8 +135,7 @@ mod tests {
         let mut table = vec![0u8; total_len];
         table[..SDT_HEADER_LEN].copy_from_slice(&sdt_header(XSDT_SIGNATURE, total_len as u32));
         table[SDT_HEADER_LEN..SDT_HEADER_LEN + 8].copy_from_slice(&0x5000u64.to_le_bytes());
-        table[SDT_HEADER_LEN + 8..SDT_HEADER_LEN + 16]
-            .copy_from_slice(&0x6000u64.to_le_bytes());
+        table[SDT_HEADER_LEN + 8..SDT_HEADER_LEN + 16].copy_from_slice(&0x6000u64.to_le_bytes());
         fix_table_checksum(&mut table);
         validate_checksum(&table).expect("valid checksum");
 

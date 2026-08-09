@@ -16,15 +16,7 @@ fn gate_b_qemu_platform_resolves() {
     assert_eq!(resolved.cpu.assignments.len(), 3);
     assert_eq!(resolved.ept.partitions.len(), 3);
     assert_eq!(resolved.vtd.domains.len(), 3);
-    assert_eq!(
-        resolved
-            .vtd
-            .domains
-            .iter()
-            .filter(|domain| !domain.devices.is_empty())
-            .count(),
-        2
-    );
+    assert_eq!(resolved.vtd.domains.iter().filter(|domain| !domain.devices.is_empty()).count(), 2);
 }
 
 #[test]

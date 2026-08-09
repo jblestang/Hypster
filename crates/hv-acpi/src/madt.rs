@@ -5,9 +5,7 @@ use alloc::vec::Vec;
 use hv_types::{ApicId, HostPhysAddr};
 
 use crate::error::AcpiError;
-use crate::table::{
-    parse_sdt_header, read_u32_le, read_u8, SDT_HEADER_LEN, SdtHeader,
-};
+use crate::table::{parse_sdt_header, read_u32_le, read_u8, SdtHeader, SDT_HEADER_LEN};
 
 /// MADT signature.
 pub const MADT_SIGNATURE: [u8; 4] = *b"APIC";
@@ -93,17 +91,11 @@ impl MadtSummary {
 pub fn parse_madt(data: &[u8]) -> Result<MadtSummary, AcpiError> {
     let header = parse_sdt_header(data)?;
     if header.signature != MADT_SIGNATURE {
-        return Err(AcpiError::InvalidSignature {
-            expected: "APIC",
-            found: header.signature,
-        });
+        return Err(AcpiError::InvalidSignature { expected: "APIC", found: header.signature });
     }
     let table_len = header.length as usize;
     if table_len < SDT_HEADER_LEN + MADT_BODY_LEN {
-        return Err(AcpiError::InvalidLength {
-            context: "MADT",
-            length: header.length,
-        });
+        return Err(AcpiError::InvalidLength { context: "MADT", length: header.length });
     }
 
     let local_apic_phys = read_u32_le(data, SDT_HEADER_LEN)?;
@@ -124,9 +116,8 @@ pub fn parse_madt(data: &[u8]) -> Result<MadtSummary, AcpiError> {
                 reason: "zero-length structure",
             });
         }
-        let end = offset
-            .checked_add(usize::from(entry_len))
-            .ok_or(AcpiError::InvalidStructure {
+        let end =
+            offset.checked_add(usize::from(entry_len)).ok_or(AcpiError::InvalidStructure {
                 kind: "MADT entry",
                 reason: "structure length overflow",
             })?;
@@ -176,13 +167,7 @@ pub fn parse_madt(data: &[u8]) -> Result<MadtSummary, AcpiError> {
         offset = end;
     }
 
-    Ok(MadtSummary {
-        header,
-        local_apic_address,
-        pc_at_compatible,
-        local_apics,
-        x2_apics,
-    })
+    Ok(MadtSummary { header, local_apic_address, pc_at_compatible, local_apics, x2_apics })
 }
 
 #[cfg(test)]

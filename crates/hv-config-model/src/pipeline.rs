@@ -32,11 +32,7 @@ pub fn validate_config(raw: RawConfig) -> Result<ValidatedConfig, ConfigError> {
     let normalized = normalize(raw)?;
     let platform_requirements = PlatformRequirements::from_normalized(&normalized);
     let config_hash = compute_config_hash(&normalized);
-    Ok(ValidatedConfig {
-        normalized,
-        platform_requirements,
-        config_hash,
-    })
+    Ok(ValidatedConfig { normalized, platform_requirements, config_hash })
 }
 
 /// Compiles raw configuration into validated layers and static intent IR.
