@@ -22,6 +22,8 @@ hv-vtd = { path = "../hv-vtd", default-features = false }
 hv-vmx = { path = "../hv-vmx" }
 hv-types = { workspace = true, default-features = false }
 hv-config-model = { path = "../hv-config-model", default-features = false }
+hv-e1000 = { path = "../hv-e1000", default-features = false }
+hv-elf = { path = "../hv-elf", default-features = false }
 hv-ipc = { path = "../hv-ipc", default-features = false }
 
 [dev-dependencies]
@@ -34,6 +36,7 @@ hv-boot-abi = { workspace = true }
 hv-guest-abi = { workspace = true }
 hv-ipc = { path = "../hv-ipc", features = ["std"] }
 hv-e1000 = { path = "../hv-e1000", features = ["std"] }
+hv-elf = { path = "../hv-elf" }
 hv-vmx = { path = "../hv-vmx" }
 
 [lints]

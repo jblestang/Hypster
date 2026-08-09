@@ -13,10 +13,14 @@
 #![no_std]
 #![warn(missing_docs)]
 
+extern crate alloc;
+
 mod error;
 mod mmio;
+mod packet;
 mod regs;
 
 pub use error::E1000Error;
 pub use mmio::{mmio_read, mmio_write, E1000DeviceState};
+pub use packet::{PacketQueue, MAX_FRAME_BYTES};
 pub use regs::{E1000_MMIO_SIZE, REG_CTRL, REG_STATUS, REG_TDH, REG_TDT};

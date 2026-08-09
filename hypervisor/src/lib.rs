@@ -6,6 +6,7 @@
 extern crate alloc;
 
 pub mod entry;
+mod datapath;
 mod plans;
 
 pub use entry::hypster_entry;

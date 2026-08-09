@@ -36,6 +36,7 @@ fn run(args: Vec<String>) -> Result<(), String> {
         Some("platform") if args.len() == 3 && args[1] == "resolve" => {
             platform_resolve(Path::new(&args[2]))
         }
+        Some("datapath") if args.len() == 2 && args[1] == "smoke" => datapath_smoke(),
         _ => Err(usage()),
     }
 }
@@ -62,6 +63,21 @@ fn run_tests() -> Result<(), String> {
 
 fn run_build() -> Result<(), String> {
     run_cmd(workspace_root(), "cargo", &["build", "--workspace"])
+}
+
+fn datapath_smoke() -> Result<(), String> {
+    run_cmd(
+        workspace_root(),
+        "cargo",
+        &[
+            "test",
+            "-p",
+            "hv-runtime",
+            "gate_d_e2e_datapath_moves_payload_through_engine",
+            "--",
+            "--nocapture",
+        ],
+    )
 }
 
 fn validate_config(path: &Path) -> Result<(), String> {
@@ -138,5 +154,5 @@ fn workspace_root() -> PathBuf {
 }
 
 fn usage() -> String {
-    "usage: cargo xtask <test|build|config validate <path>|config generate <path> [--output dir]|platform resolve <path>>".into()
+    "usage: cargo xtask <test|build|config validate <path>|config generate <path> [--output dir]|platform resolve <path>|datapath smoke>".into()
 }

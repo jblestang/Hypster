@@ -73,7 +73,8 @@ sufficient for silicon-specific properties.
 | Config hash enforcement | UNIT + Gate D integration tests |
 | Embedded platform plans (hypervisor) | BUILD |
 | Guest partition stubs | BUILD (`x86_64-unknown-none`) |
-| End-to-end datapath (e1000, UDP) | QEMU (future) |
+| Guest MID IPC relay loop | BUILD + UNIT (`guest-common`) |
+| End-to-end datapath (e1000, UDP) | UNIT + host-assisted integration (`cargo xtask datapath smoke`) |
 | Guest VMCS launch planning | UNIT + Gate D integration tests |
 | e1000 MMIO decode skeleton | UNIT + malicious tests |
 | EPT MMIO device mappings | UNIT + Gate D integration tests |

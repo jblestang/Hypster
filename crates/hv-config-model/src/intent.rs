@@ -185,11 +185,17 @@ fn build_partition_intents(
 fn build_ipc_intents(
     channels: &[NormalizedIpc],
 ) -> Result<Vec<IpcIntent>, crate::error::ConfigError> {
+    /// Must stay in sync with [`hv_ipc::IPC_RING_HEADER_BYTES`].
+    const IPC_RING_HEADER_BYTES: u64 = 40;
+
     let mut out = Vec::with_capacity(channels.len());
     for channel in channels {
         let slot_bytes = u64::from(channel.slot_size);
         let count = u64::from(channel.slot_count);
-        let shared_bytes = slot_bytes.checked_mul(count).ok_or_else(|| {
+        let payload_bytes = slot_bytes.checked_mul(count).ok_or_else(|| {
+            crate::error::ConfigError::invalid("ipc[]", "shared memory size overflow")
+        })?;
+        let shared_bytes = payload_bytes.checked_add(IPC_RING_HEADER_BYTES).ok_or_else(|| {
             crate::error::ConfigError::invalid("ipc[]", "shared memory size overflow")
         })?;
         out.push(IpcIntent {

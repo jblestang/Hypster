@@ -10,7 +10,7 @@ use hv_guest_abi::layout;
 use hv_guest_abi::GuestBootInfo;
 use hv_ipc::{init_ring, try_pop, try_push, validate_ring, IpcError};
 use hv_partition::{build_guest_boot_info, gate_d_plans_from_resolved};
-use hv_runtime::{initialize_gate_d, GateCPlans};
+use hv_runtime::{initialize_gate_d, GateCPlans, DatapathEngine, MmioDispatch};
 use hv_types::{HostPhysAddr, VcpuId, VmId};
 
 const IPC_RING_BYTES: usize = 524_328;
@@ -105,6 +105,8 @@ fn gate_d_runtime_initialize_with_allocated_ipc_backing() {
             assert_eq!(report.launch.planned_launches, 3);
             assert_eq!(report.launch.vmcs_field_sets, 3);
             assert!(report.launch.mmio_devices >= 2);
+            assert_eq!(report.datapath.ipc_channels, 2);
+            assert!(report.datapath.mmio_devices >= 2);
         }
         Err(err) => {
             assert!(
@@ -183,4 +185,104 @@ fn gate_d_gate_c_plans_remain_compatible() {
         vtd_table_base: HostPhysAddr::new(0x2100_0000),
         vmxon_region_base: HostPhysAddr::new(0x2200_0000),
     };
+}
+
+#[test]
+fn gate_d_e2e_datapath_moves_payload_through_engine() {
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../configs/qemu.yaml");
+    let raw = read_yaml_file(path).expect("read config");
+    let compiled = compile_config(raw).expect("compile config");
+    let observed = qemu_validation_observed().expect("fixture");
+    let platform = resolve_platform(&compiled.intent, &observed).expect("resolve");
+    let mut plans = gate_d_plans_from_resolved(&platform);
+
+    use hv_ipc::compute_shared_bytes;
+    use hv_runtime::assign_ipc_host_backing;
+
+    let total_backing: usize = plans
+        .ipc_channels
+        .iter()
+        .map(|channel| {
+            compute_shared_bytes(channel.slot_count, channel.slot_size).expect("ring bytes") as usize
+        })
+        .sum();
+    let mut ipc_backing = vec![0u8; total_backing];
+    assign_ipc_host_backing(&mut plans, &mut ipc_backing).expect("assign backing");
+    for channel in &plans.ipc_channels {
+        let ptr = channel.host_base.raw() as *mut u8;
+        let slice = unsafe { core::slice::from_raw_parts_mut(ptr, channel.shared_bytes as usize) };
+        hv_ipc::init_ring(slice, &channel.name, channel.slot_count, channel.slot_size)
+            .expect("init ring");
+    }
+
+    let mut engine = DatapathEngine::from_plans(&plans, &mut ipc_backing).expect("engine");
+    let mut out = [0u8; 2048];
+    let report = engine
+        .run_e2e_once(b"gate-d-udp-payload", &mut out)
+        .expect("e2e transfer");
+    assert_eq!(report.step.in_to_mid_frames, 1);
+    assert!(report.outbound_bytes >= b"gate-d-udp-payload".len());
+    assert_eq!(&out[..b"gate-d-udp-payload".len()], b"gate-d-udp-payload");
+}
+
+#[test]
+fn gate_d_mmio_dispatch_covers_e1000_mappings() {
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../configs/qemu.yaml");
+    let raw = read_yaml_file(path).expect("read config");
+    let compiled = compile_config(raw).expect("compile config");
+    let observed = qemu_validation_observed().expect("fixture");
+    let platform = resolve_platform(&compiled.intent, &observed).expect("resolve");
+    let in_partition = platform
+        .ept
+        .partitions
+        .iter()
+        .find(|part| part.vm_id.raw() == 0)
+        .expect("in ept");
+    let dispatch = MmioDispatch::from_ept_mappings(&in_partition.mappings);
+    let status = dispatch
+        .read32(
+            hv_types::GuestPhysAddr::new(0xFEB0_0000),
+            hv_e1000::REG_STATUS,
+        )
+        .expect("status");
+    assert_ne!(status & 0x80, 0);
+}
+
+#[test]
+fn gate_d_elf_loader_places_segments_at_guest_phys_zero() {
+    use hv_runtime::load_elf_into_guest_ram;
+
+    fn minimal_elf(entry: u64, load_vaddr: u64, payload: &[u8]) -> Vec<u8> {
+        use hv_elf::{ELF64_EHDR_SIZE, ELF64_PHDR_SIZE, EM_X86_64, ELFCLASS64, ELFDATA2LSB, ELF_MAGIC, PT_LOAD};
+
+        let phoff = ELF64_EHDR_SIZE as u64;
+        let file_offset = phoff + ELF64_PHDR_SIZE as u64;
+        let total = (file_offset as usize) + payload.len();
+        let mut image = vec![0u8; total];
+        image[0..4].copy_from_slice(&ELF_MAGIC);
+        image[4] = ELFCLASS64;
+        image[5] = ELFDATA2LSB;
+        image[0x10..0x12].copy_from_slice(&2u16.to_le_bytes());
+        image[0x12..0x14].copy_from_slice(&EM_X86_64.to_le_bytes());
+        image[0x18..0x20].copy_from_slice(&entry.to_le_bytes());
+        image[0x20..0x28].copy_from_slice(&phoff.to_le_bytes());
+        image[0x36..0x38].copy_from_slice(&(ELF64_PHDR_SIZE as u16).to_le_bytes());
+        image[0x38..0x3A].copy_from_slice(&1u16.to_le_bytes());
+        let phdr = ELF64_EHDR_SIZE;
+        image[phdr..phdr + 4].copy_from_slice(&PT_LOAD.to_le_bytes());
+        image[phdr + 0x08..phdr + 0x10].copy_from_slice(&file_offset.to_le_bytes());
+        image[phdr + 0x10..phdr + 0x18].copy_from_slice(&load_vaddr.to_le_bytes());
+        image[phdr + 0x18..phdr + 0x20].copy_from_slice(&load_vaddr.to_le_bytes());
+        image[phdr + 0x20..phdr + 0x28].copy_from_slice(&(payload.len() as u64).to_le_bytes());
+        image[phdr + 0x28..phdr + 0x30].copy_from_slice(&(payload.len() as u64).to_le_bytes());
+        image[phdr + 0x30..phdr + 0x38].copy_from_slice(&0x1000u64.to_le_bytes());
+        image[file_offset as usize..total].copy_from_slice(payload);
+        image
+    }
+
+    let image = minimal_elf(0x1000, 0, b"guest-image");
+    let mut ram = vec![0u8; 4096];
+    let loaded = load_elf_into_guest_ram(&image, &mut ram).expect("load elf");
+    assert_eq!(loaded.entry_point, 0x1000);
+    assert_eq!(&ram[..11], b"guest-image");
 }

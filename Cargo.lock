@@ -144,6 +144,7 @@ name = "guest-common"
 version = "0.1.0"
 dependencies = [
  "hv-guest-abi",
+ "hv-ipc",
  "hv-types",
 ]
 
@@ -326,6 +327,7 @@ dependencies = [
  "hv-core",
  "hv-cpu",
  "hv-e1000",
+ "hv-elf",
  "hv-ept",
  "hv-guest-abi",
  "hv-ipc",
@@ -375,6 +377,7 @@ dependencies = [
  "hv-config-model",
  "hv-core",
  "hv-ept",
+ "hv-ipc",
  "hv-partition",
  "hv-runtime",
  "hv-types",

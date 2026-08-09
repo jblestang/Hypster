@@ -111,8 +111,14 @@ fn render_ept_plan(plan: &hv_ept::EptPlan) -> String {
                 mapping.host_phys.raw()
             ));
             out.push_str(&format!("\n                            size: {},", mapping.size));
-            out.push_str("\n                            permissions: EptPermissions::GUEST_RAM,");
-            out.push_str("\n                            memory_type: EptMemoryType::WriteBack,");
+            out.push_str(&format!(
+                "\n                            permissions: {},",
+                render_permissions(&mapping.permissions)
+            ));
+            out.push_str(&format!(
+                "\n                            memory_type: {},",
+                render_memory_type(mapping.memory_type)
+            ));
             out.push_str("\n                        },");
         }
         out.push_str("\n                    ],");
@@ -120,6 +126,23 @@ fn render_ept_plan(plan: &hv_ept::EptPlan) -> String {
     }
     out.push_str("\n            ] },\n");
     out
+}
+
+fn render_permissions(permissions: &hv_ept::EptPermissions) -> &'static str {
+    if permissions.read && permissions.write && permissions.execute {
+        "EptPermissions::GUEST_RAM"
+    } else if permissions.read && permissions.write && !permissions.execute {
+        "EptPermissions::MMIO"
+    } else {
+        "EptPermissions { read: false, write: false, execute: false }"
+    }
+}
+
+fn render_memory_type(memory_type: hv_ept::EptMemoryType) -> &'static str {
+    match memory_type {
+        hv_ept::EptMemoryType::WriteBack => "EptMemoryType::WriteBack",
+        hv_ept::EptMemoryType::Uncacheable => "EptMemoryType::Uncacheable",
+    }
 }
 
 fn render_vtd_plan(plan: &hv_vtd::VtdPlan) -> String {

@@ -5,6 +5,7 @@ use core::fmt;
 use hv_acpi::AcpiError;
 use hv_boot_abi::BootLayoutError;
 use hv_cpu::CpuProbeError;
+use hv_e1000::E1000Error;
 use hv_ept::EptPlanError;
 use hv_ipc::IpcError;
 use hv_vmx::VmxError;
@@ -34,6 +35,8 @@ pub enum RuntimeError {
     ConfigHashMismatch,
     /// IPC ring initialization or validation failed.
     Ipc(IpcError),
+    /// MMIO dispatch failed.
+    Mmio(E1000Error),
 }
 
 impl RuntimeError {
@@ -51,6 +54,7 @@ impl RuntimeError {
             Self::TableRegionUnavailable => "table region unavailable",
             Self::ConfigHashMismatch => "config hash mismatch",
             Self::Ipc(_) => "ipc error",
+            Self::Mmio(_) => "mmio error",
         }
     }
 }
@@ -106,5 +110,11 @@ impl From<VmxError> for RuntimeError {
 impl From<IpcError> for RuntimeError {
     fn from(value: IpcError) -> Self {
         Self::Ipc(value)
+    }
+}
+
+impl From<E1000Error> for RuntimeError {
+    fn from(value: E1000Error) -> Self {
+        Self::Mmio(value)
     }
 }

@@ -1,10 +1,11 @@
 #![no_std]
 #![no_main]
 
-use core::arch::asm;
 use core::panic::PanicInfo;
 
-use guest_common::is_boot_info_compatible;
+use guest_common::{
+    is_boot_info_compatible, run_mid_relay_loop, MID_IN_TO_MID_GPA, MID_MID_TO_OUT_GPA,
+};
 use hv_guest_abi::GuestBootInfo;
 
 static BOOT_INFO: GuestBootInfo = GuestBootInfo {
@@ -27,19 +28,19 @@ pub extern "C" fn _start() -> ! {
     if !is_boot_info_compatible(&BOOT_INFO) {
         fail();
     }
-    idle();
-}
-
-fn idle() -> ! {
-    loop {
-        unsafe {
-            asm!("hlt", options(nomem, nostack, preserves_flags));
-        }
+    // SAFETY: hypervisor maps initialized IPC rings at these GPAs for the MID partition.
+    unsafe {
+        run_mid_relay_loop(
+            MID_IN_TO_MID_GPA as *mut u8,
+            MID_MID_TO_OUT_GPA as *mut u8,
+        );
     }
 }
 
 fn fail() -> ! {
-    idle()
+    loop {
+        core::hint::spin_loop();
+    }
 }
 
 #[panic_handler]

@@ -4,7 +4,7 @@ use crate::error::E1000Error;
 use crate::regs::{E1000_MMIO_SIZE, REG_CTRL, REG_STATUS, REG_TDH, REG_TDT};
 
 /// Runtime state for one emulated e1000 instance.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct E1000DeviceState {
     /// `REG_CTRL` value.
     pub ctrl: u32,
@@ -14,13 +14,44 @@ pub struct E1000DeviceState {
     pub tdh: u32,
     /// `REG_TDT` value.
     pub tdt: u32,
+    /// Host-side RX queue for injected frames.
+    pub rx_queue: crate::packet::PacketQueue,
+    /// Host-side TX queue for extracted frames.
+    pub tx_queue: crate::packet::PacketQueue,
 }
 
 impl E1000DeviceState {
     /// Returns powered-link-up status suitable for guest driver probe.
     #[must_use]
-    pub const fn new_link_up() -> Self {
-        Self { ctrl: 0, status: 0x0000_0080, tdh: 0, tdt: 0 }
+    pub fn new_link_up() -> Self {
+        Self {
+            ctrl: 0,
+            status: 0x0000_0080,
+            tdh: 0,
+            tdt: 0,
+            rx_queue: crate::packet::PacketQueue::new(),
+            tx_queue: crate::packet::PacketQueue::new(),
+        }
+    }
+
+    /// Injects one frame into the device RX queue.
+    pub fn inject_rx_frame(&mut self, frame: &[u8]) {
+        self.rx_queue.push(frame);
+    }
+
+    /// Takes one received frame from the device RX queue.
+    pub fn take_rx_frame(&mut self, out: &mut [u8]) -> Option<usize> {
+        self.rx_queue.pop(out)
+    }
+
+    /// Enqueues one frame on the device TX queue.
+    pub fn enqueue_tx_frame(&mut self, frame: &[u8]) {
+        self.tx_queue.push(frame);
+    }
+
+    /// Takes one transmitted frame from the device TX queue.
+    pub fn take_tx_frame(&mut self, out: &mut [u8]) -> Option<usize> {
+        self.tx_queue.pop(out)
     }
 }
 

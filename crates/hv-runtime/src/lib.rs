@@ -6,17 +6,31 @@
 
 extern crate alloc;
 
+mod datapath;
 mod error;
 mod init;
 mod launch;
+mod load;
+mod mmio;
 mod partition;
+mod run;
+mod vmexit;
 
+pub use datapath::{
+    channel_backings_from_plans, drain_outbound_payload, inject_inbound_payload, run_datapath_step,
+    ChannelBacking, DatapathChannels, DatapathStepReport,
+};
 pub use error::RuntimeError;
 pub use init::{initialize, initialize_gate_d, GateCPlans, GateDInitReport, RuntimeInitReport};
 pub use launch::{
     plan_partition_launches, prepare_partition_launches, LaunchPrepReport,
     DEFAULT_GUEST_BOOT_INFO_GPA, DEFAULT_GUEST_ENTRY, DEFAULT_GUEST_STACK,
 };
+pub use load::{load_elf_into_guest_ram, LoadedGuestImage};
+pub use mmio::{MmioDevice, MmioDispatch};
 pub use partition::{
-    prepare_ipc_rings, verify_config_hash, GateDPlans, IpcChannelPlan, PartitionPrepReport,
+    assign_ipc_host_backing, prepare_ipc_rings, verify_config_hash, GateDPlans, IpcChannelPlan,
+    PartitionPrepReport,
 };
+pub use run::{prepare_datapath, DatapathEngine, DatapathPrepReport, E2eTransferReport};
+pub use vmexit::{classify_exit_reason, handle_mmio_exit, reason as vmexit_reason, MmioExitAction, MmioExitInfo};

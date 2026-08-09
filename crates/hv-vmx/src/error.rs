@@ -37,6 +37,8 @@ pub enum VmxError {
     VmwriteFailed,
     /// VMLAUNCH instruction failed.
     VmlaunchFailed,
+    /// VMRESUME instruction failed.
+    VmresumeFailed,
     /// Guest launch plan violates alignment or layout invariants.
     InvalidGuestLaunchPlan,
     /// EPT root is not page aligned.
@@ -64,6 +66,7 @@ impl fmt::Display for VmxError {
             Self::VmreadFailed => f.write_str("VMREAD failed"),
             Self::VmwriteFailed => f.write_str("VMWRITE failed"),
             Self::VmlaunchFailed => f.write_str("VMLAUNCH failed"),
+            Self::VmresumeFailed => f.write_str("VMRESUME failed"),
             Self::InvalidGuestLaunchPlan => f.write_str("invalid guest launch plan"),
             Self::MisalignedEptRoot => f.write_str("EPT root not page aligned"),
         }

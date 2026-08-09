@@ -8,7 +8,11 @@ publish = false
 
 [dependencies]
 hv-guest-abi = { workspace = true }
+hv-ipc = { path = "../../crates/hv-ipc", default-features = false }
 hv-types = { workspace = true, default-features = false }
+
+[dev-dependencies]
+hv-ipc = { path = "../../crates/hv-ipc", features = ["std"] }
 
 [lints]
 workspace = true

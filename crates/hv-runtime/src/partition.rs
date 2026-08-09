@@ -1,7 +1,7 @@
 //! Gate D partition preparation and IPC ring initialization.
 
 use hv_config_model::hash::ConfigHash;
-use hv_ipc::init_ring;
+use hv_ipc::{init_ring, IpcError};
 use hv_types::HostPhysAddr;
 
 use crate::error::RuntimeError;
@@ -59,6 +59,47 @@ pub fn verify_config_hash(
     Ok(())
 }
 
+/// Assigns host backing slices for IPC channels in declaration order.
+///
+/// # Errors
+///
+/// Returns [`RuntimeError::Ipc`] when the backing buffer is too small.
+pub fn assign_ipc_host_backing(
+    plans: &mut GateDPlans,
+    backing: &mut [u8],
+) -> Result<(), RuntimeError> {
+    let mut offset = 0usize;
+    for channel in &mut plans.ipc_channels {
+        let size = ring_backing_bytes(channel)?;
+        let end = offset.checked_add(size).ok_or(IpcError::Overflow)?;
+        if end > backing.len() {
+            return Err(RuntimeError::Ipc(IpcError::BufferTooSmall));
+        }
+        channel.host_base = HostPhysAddr::new(backing[offset..].as_ptr() as u64);
+        channel.shared_bytes = size as u64;
+        offset = end;
+    }
+    Ok(())
+}
+
+fn ring_backing_bytes(channel: &IpcChannelPlan) -> Result<usize, RuntimeError> {
+    hv_ipc::compute_shared_bytes(channel.slot_count, channel.slot_size)
+        .map(|bytes| bytes as usize)
+        .map_err(RuntimeError::Ipc)
+}
+
+fn init_host_ipc_ring(channel: &IpcChannelPlan) -> Result<(), RuntimeError> {
+    if channel.host_base.raw() == 0 {
+        return Err(RuntimeError::TableRegionUnavailable);
+    }
+    let size = ring_backing_bytes(channel)?;
+    let ptr = channel.host_base.raw() as *mut u8;
+    let backing = unsafe { core::slice::from_raw_parts_mut(ptr, size) };
+    init_ring(backing, &channel.name, channel.slot_count, channel.slot_size)
+        .map_err(RuntimeError::Ipc)?;
+    Ok(())
+}
+
 /// Initializes IPC rings in host backing memory.
 ///
 /// # Errors
@@ -74,17 +115,6 @@ pub fn prepare_ipc_rings(
         ipc_rings += 1;
     }
     Ok(PartitionPrepReport { partitions: partition_count, ipc_rings })
-}
-
-fn init_host_ipc_ring(channel: &IpcChannelPlan) -> Result<(), RuntimeError> {
-    if channel.host_base.raw() == 0 {
-        return Err(RuntimeError::TableRegionUnavailable);
-    }
-    let ptr = channel.host_base.raw() as *mut u8;
-    let backing = unsafe { core::slice::from_raw_parts_mut(ptr, channel.shared_bytes as usize) };
-    init_ring(backing, &channel.name, channel.slot_count, channel.slot_size)
-        .map_err(RuntimeError::Ipc)?;
-    Ok(())
 }
 
 #[cfg(test)]

@@ -56,6 +56,15 @@ pub unsafe fn vmlaunch() -> Result<(), VmxError> {
     vmlaunch_impl()
 }
 
+/// Executes VMRESUME.
+///
+/// # Safety
+///
+/// Caller must ensure guest VMCS state is valid and host state is configured.
+pub unsafe fn vmresume() -> Result<(), VmxError> {
+    vmresume_impl()
+}
+
 #[cfg(target_arch = "x86_64")]
 unsafe fn vmxon_impl(region_hpa: u64) -> Result<(), VmxError> {
     let failed: u8;
@@ -199,5 +208,28 @@ unsafe fn vmlaunch_impl() -> Result<(), VmxError> {
 
 #[cfg(not(target_arch = "x86_64"))]
 unsafe fn vmlaunch_impl() -> Result<(), VmxError> {
+    Err(VmxError::UnsupportedArch)
+}
+
+#[cfg(target_arch = "x86_64")]
+unsafe fn vmresume_impl() -> Result<(), VmxError> {
+    let failed: u8;
+    // SAFETY: caller guarantees guest VMCS is valid.
+    unsafe {
+        core::arch::asm!(
+            "vmresume",
+            "setc {failed}",
+            failed = lateout(reg_byte) failed,
+            options(nostack),
+        );
+    }
+    if failed != 0 {
+        return Err(VmxError::VmresumeFailed);
+    }
+    Ok(())
+}
+
+#[cfg(not(target_arch = "x86_64"))]
+unsafe fn vmresume_impl() -> Result<(), VmxError> {
     Err(VmxError::UnsupportedArch)
 }
