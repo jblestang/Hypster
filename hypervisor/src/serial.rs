@@ -9,7 +9,8 @@ pub fn write_str(message: &str) {
     }
 }
 
-fn write_byte(byte: u8) {
+/// Writes one byte to COM1.
+pub fn write_byte(byte: u8) {
     wait_transmit_empty();
     // SAFETY: COM1 data register write for debug output under QEMU/OVMF.
     unsafe {

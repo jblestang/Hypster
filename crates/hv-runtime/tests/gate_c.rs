@@ -99,15 +99,16 @@ fn gate_c_runtime_initialize_without_hardware_vmx() {
         hypervisor_load_address: 0x100000,
         boot_info_bytes: total as u32,
     };
-    let plans = GateCPlans {
+    let mut plans = GateCPlans {
         ept: hv_ept::EptPlan { partitions: Vec::new() },
         vtd: hv_vtd::VtdPlan { domains: Vec::new() },
         ept_table_base: HostPhysAddr::new(0),
         vtd_table_base: HostPhysAddr::new(0),
         vmxon_region_base: HostPhysAddr::new(0),
+        ept_root_hp_as: Vec::new(),
     };
     // CPU probe may fail on hosts without VMX; that is acceptable for CI.
-    match initialize(&info, &plans) {
+    match initialize(&info, &mut plans) {
         Ok(report) => {
             assert!(!report.vmx_enabled);
         }

@@ -53,16 +53,74 @@ pub fn run(workspace: &Path, config: &Path, headless: bool) -> Result<(), String
     run_cmd(&qemu, &args)
 }
 
+struct LaunchBootOptions {
+    nested_vmx: bool,
+}
+
+impl Default for LaunchBootOptions {
+    fn default() -> Self {
+        Self { nested_vmx: false }
+    }
+}
+
 /// Prepares artifacts and boots QEMU when available, waiting for the running marker.
 pub fn smoke(workspace: &Path, config: &Path) -> Result<(), String> {
     prepare(workspace, config)?;
-    boot_until_marker(workspace, config, Duration::from_secs(60), "hypster: gate-d running")
+    boot_until_marker(
+        workspace,
+        config,
+        Duration::from_secs(60),
+        "hypster: gate-d running",
+        LaunchBootOptions::default(),
+    )
+}
+
+/// Prepares launch artifacts including hardware-enabled hypervisor and static guests.
+pub fn launch_prepare(workspace: &Path, config: &Path) -> Result<PrepareReport, String> {
+    let _report = prepare(workspace, config)?;
+    run_cargo_with_rustflags(
+        workspace,
+        &[
+            "build",
+            "-p",
+            "hypster",
+            "--target",
+            "x86_64-unknown-none",
+            "--release",
+            "--features",
+            "bare-metal-bin,hardware",
+        ],
+        Some("-C relocation-model=static"),
+    )?;
+    layout_esp(workspace)
+}
+
+/// Boots QEMU under KVM and waits for the guest VMLAUNCH marker.
+pub fn launch_smoke(workspace: &Path, config: &Path) -> Result<(), String> {
+    launch_prepare(workspace, config)?;
+    if !kvm_usable() {
+        println!("KVM unavailable (need read access to /dev/kvm); skipping launch smoke");
+        return Ok(());
+    }
+    boot_until_marker(
+        workspace,
+        config,
+        Duration::from_secs(90),
+        "hypster: vmlaunch ok",
+        LaunchBootOptions { nested_vmx: true },
+    )
 }
 
 /// Prepares artifacts and boots QEMU when available, waiting for the datapath marker.
 pub fn datapath_e2e(workspace: &Path, config: &Path) -> Result<(), String> {
     prepare(workspace, config)?;
-    boot_until_marker(workspace, config, Duration::from_secs(90), "hypster: e2e ok")
+    boot_until_marker(
+        workspace,
+        config,
+        Duration::from_secs(90),
+        "hypster: e2e ok",
+        LaunchBootOptions::default(),
+    )
 }
 
 fn generate_config(config: &Path, output: &Path) -> Result<(), String> {
@@ -91,9 +149,9 @@ fn build_artifacts(workspace: &Path) -> Result<(), String> {
             &["--features", "bare-metal-bin"],
             Some("-C relocation-model=static"),
         ),
-        ("guest-in", "x86_64-unknown-none", &["--features", "bare-metal-bin"], None),
-        ("guest-mid", "x86_64-unknown-none", &["--features", "bare-metal-bin"], None),
-        ("guest-out", "x86_64-unknown-none", &["--features", "bare-metal-bin"], None),
+        ("guest-in", "x86_64-unknown-none", &["--features", "bare-metal-bin"], Some("-C relocation-model=static")),
+        ("guest-mid", "x86_64-unknown-none", &["--features", "bare-metal-bin"], Some("-C relocation-model=static")),
+        ("guest-out", "x86_64-unknown-none", &["--features", "bare-metal-bin"], Some("-C relocation-model=static")),
     ];
     for (package, target, features, rustflags) in builds {
         let mut args = vec!["build", "-p", package, "--target", target, "--release"];
@@ -223,7 +281,16 @@ fn prefer_kvm_accel(args: &mut [String]) {
 }
 
 fn kvm_usable() -> bool {
-    fs::OpenOptions::new().read(true).write(true).open("/dev/kvm").is_ok()
+    fs::OpenOptions::new().read(true).open("/dev/kvm").is_ok()
+}
+
+fn enable_nested_vmx_args(args: &mut Vec<String>) {
+    prefer_kvm_accel(args);
+    if kvm_usable() {
+        replace_cpu_arg(args, "host");
+    } else {
+        replace_cpu_arg(args, "max");
+    }
 }
 
 fn append_esp_drive(args: &mut Vec<String>, esp_root: &Path) {
@@ -291,6 +358,7 @@ fn boot_until_marker(
     config: &Path,
     timeout: Duration,
     marker: &str,
+    options: LaunchBootOptions,
 ) -> Result<(), String> {
     let qemu = match find_qemu() {
         Ok(path) => path,
@@ -310,7 +378,9 @@ fn boot_until_marker(
 
     let mut args = assemble_qemu_args(workspace, config)?;
     replace_bios_arg(&mut args, &ovmf);
-    if !kvm_usable() {
+    if options.nested_vmx {
+        enable_nested_vmx_args(&mut args);
+    } else if !kvm_usable() {
         replace_cpu_arg(&mut args, "max");
     }
     args.extend(["-serial", "stdio", "-display", "none", "-no-reboot"].map(str::to_string));

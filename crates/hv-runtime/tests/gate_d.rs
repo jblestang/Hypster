@@ -98,7 +98,7 @@ fn gate_d_runtime_initialize_with_allocated_ipc_backing() {
         boot_info_bytes: total as u32,
     };
 
-    match initialize_gate_d(&info, &plans) {
+    match initialize_gate_d(&info, &mut plans) {
         Ok(report) => {
             assert_eq!(report.partitions.ipc_rings, 2);
             assert_eq!(report.partitions.partitions, 3);
@@ -131,7 +131,7 @@ fn gate_d_config_hash_mismatch_is_fail_closed() {
     let compiled = compile_config(raw).expect("compile config");
     let observed = qemu_validation_observed().expect("fixture");
     let platform = resolve_platform(&compiled.intent, &observed).expect("resolve");
-    let plans = gate_d_plans_from_resolved(&platform);
+    let mut plans = gate_d_plans_from_resolved(&platform);
     let total = core::mem::size_of::<hv_boot_abi::BootInfo>();
     let info = hv_boot_abi::BootInfo {
         header: hv_boot_abi::BootInfoHeader {
@@ -148,7 +148,7 @@ fn gate_d_config_hash_mismatch_is_fail_closed() {
         boot_info_bytes: total as u32,
     };
     assert!(matches!(
-        initialize_gate_d(&info, &plans),
+        initialize_gate_d(&info, &mut plans),
         Err(hv_runtime::RuntimeError::ConfigHashMismatch)
     ));
 }
@@ -166,10 +166,10 @@ fn gate_d_guest_vmcs_launch_plan_includes_ept_pointer() {
     use hv_vmx::{build_guest_vmcs_fields, vmcs::EPT_POINTER, GuestLaunchPlan};
     let plan = GuestLaunchPlan {
         vm_id: VmId::new(0),
-        vmcs_hpa: HostPhysAddr::new(0x2400_0000),
+        vmcs_hpa: HostPhysAddr::new(0x1_1800_0000),
         guest_entry: GuestPhysAddr::new(0x1000),
         guest_stack: GuestPhysAddr::new(0x8000),
-        ept_root_hpa: HostPhysAddr::new(0x2000_1000),
+        ept_root_hpa: HostPhysAddr::new(0x1_1510_1000),
         guest_boot_info_gpa: GuestPhysAddr::new(0x9000),
     };
     let fields = build_guest_vmcs_fields(&plan).expect("fields");
@@ -181,9 +181,10 @@ fn gate_d_gate_c_plans_remain_compatible() {
     let _ = GateCPlans {
         ept: hv_ept::EptPlan { partitions: Vec::new() },
         vtd: hv_vtd::VtdPlan { domains: Vec::new() },
-        ept_table_base: HostPhysAddr::new(0x2000_0000),
-        vtd_table_base: HostPhysAddr::new(0x2100_0000),
-        vmxon_region_base: HostPhysAddr::new(0x2200_0000),
+        ept_table_base: HostPhysAddr::new(0x1_1510_0000),
+        vtd_table_base: HostPhysAddr::new(0x1_1610_0000),
+        vmxon_region_base: HostPhysAddr::new(0x1_1710_0000),
+        ept_root_hp_as: Vec::new(),
     };
 }
 

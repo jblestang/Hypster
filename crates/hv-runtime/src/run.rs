@@ -224,9 +224,10 @@ mod tests {
             gate_c: GateCPlans {
                 ept: EptPlan { partitions: alloc::vec::Vec::new() },
                 vtd: VtdPlan { domains: alloc::vec::Vec::new() },
-                ept_table_base: HostPhysAddr::new(0x2000_0000),
-                vtd_table_base: HostPhysAddr::new(0x2100_0000),
-                vmxon_region_base: HostPhysAddr::new(0x2200_0000),
+                ept_table_base: HostPhysAddr::new(0x1_1510_0000),
+                vtd_table_base: HostPhysAddr::new(0x1_1610_0000),
+                vmxon_region_base: HostPhysAddr::new(0x1_1710_0000),
+                ept_root_hp_as: alloc::vec::Vec::new(),
             },
             ipc_channels: alloc::vec![
                 IpcChannelPlan {

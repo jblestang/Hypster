@@ -9,6 +9,7 @@ extern crate alloc;
 mod datapath;
 mod error;
 mod init;
+mod execute;
 mod launch;
 mod load;
 mod mmio;
@@ -22,6 +23,10 @@ pub use datapath::{
 };
 pub use error::RuntimeError;
 pub use init::{initialize, initialize_gate_d, GateCPlans, GateDInitReport, RuntimeInitReport};
+pub use execute::{
+    capture_host_launch_context, launch_plan_for_vm, read_vmexit_reason, resume_guest,
+    stage_guest_image, vmlaunch_guest, HostLaunchContext,
+};
 pub use launch::{
     plan_partition_launches, prepare_partition_launches, LaunchPrepReport,
     DEFAULT_GUEST_BOOT_INFO_GPA, DEFAULT_GUEST_ENTRY, DEFAULT_GUEST_STACK,

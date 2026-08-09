@@ -8,6 +8,8 @@ use hv_core::boot::BootPhase;
 use crate::datapath;
 use crate::plans;
 use crate::serial;
+#[cfg(feature = "hardware")]
+use crate::launch;
 
 /// Hypervisor entry called by the loader with a pointer to boot info.
 ///
@@ -29,6 +31,13 @@ pub unsafe extern "C" fn hypster_entry(boot_info: *const BootInfo) -> ! {
         Ok((plans, report)) => {
             let _ = report.gate_c.phase.transition(BootPhase::Running);
             serial::write_str("hypster: gate-d running\n");
+            #[cfg(feature = "hardware")]
+            if report.gate_c.vmx_enabled {
+                // SAFETY: Gate C init enabled VMX and installed EPT/VMCS regions.
+                if unsafe { launch::try_launch_in_guest(&plans) }.is_err() {
+                    serial::write_str("hypster: vmlaunch skipped\n");
+                }
+            }
             datapath::run_steady_state_loop(&plans, report);
         }
         Err(err) => {

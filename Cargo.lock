@@ -377,11 +377,14 @@ dependencies = [
  "hv-config-model",
  "hv-core",
  "hv-ept",
+ "hv-guest-abi",
  "hv-ipc",
  "hv-partition",
  "hv-runtime",
  "hv-types",
+ "hv-vmx",
  "hv-vtd",
+ "hv-x86",
 ]
 
 [[package]]

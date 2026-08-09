@@ -51,6 +51,10 @@ fn run(args: Vec<String>) -> Result<(), String> {
             Some("run") if args.len() == 3 => qemu_run(Some(Path::new(&args[2])), false),
             Some("smoke") if args.len() == 2 => qemu_smoke(None),
             Some("smoke") if args.len() == 3 => qemu_smoke(Some(Path::new(&args[2]))),
+            Some("launch") if args.len() == 3 && args[2] == "smoke" => qemu_launch_smoke(None),
+            Some("launch") if args.len() == 4 && args[2] == "smoke" => {
+                qemu_launch_smoke(Some(Path::new(&args[3])))
+            }
             _ => Err(usage()),
         },
         _ => Err(usage()),
@@ -98,6 +102,13 @@ fn datapath_smoke() -> Result<(), String> {
 
 fn datapath_e2e() -> Result<(), String> {
     qemu::datapath_e2e(&workspace_root(), &qemu::default_config_path(&workspace_root()))
+}
+
+fn qemu_launch_smoke(config: Option<&Path>) -> Result<(), String> {
+    let root = workspace_root();
+    let default = qemu::default_config_path(&root);
+    let path = config.unwrap_or(&default);
+    qemu::launch_smoke(&root, path)
 }
 
 fn qemu_prepare(config: Option<&Path>) -> Result<(), String> {
@@ -199,5 +210,5 @@ fn workspace_root() -> PathBuf {
 }
 
 fn usage() -> String {
-    "usage: cargo xtask <test|build|config validate <path>|config generate <path> [--output dir]|platform resolve <path>|datapath smoke|datapath e2e|qemu prepare [path]|qemu run [path] [--headless]|qemu smoke [path]>".into()
+    "usage: cargo xtask <test|build|config validate <path>|config generate <path> [--output dir]|platform resolve <path>|datapath smoke|datapath e2e|qemu prepare [path]|qemu run [path] [--headless]|qemu smoke [path]|qemu launch smoke [path]>".into()
 }

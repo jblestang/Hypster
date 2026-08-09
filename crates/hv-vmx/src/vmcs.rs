@@ -84,6 +84,10 @@ pub const SECONDARY_PROC_BASED_VM_EXEC_CONTROL: u32 = vmcs_field(VMCS_WIDTH_32, 
 pub const VM_EXIT_CONTROLS: u32 = vmcs_field(VMCS_WIDTH_32, 0x400C);
 /// VM-entry controls.
 pub const VM_ENTRY_CONTROLS: u32 = vmcs_field(VMCS_WIDTH_32, 0x4012);
+/// VM-exit reason.
+pub const VM_EXIT_REASON: u32 = vmcs_field(VMCS_WIDTH_32, 0x4402);
+/// VM-exit instruction length.
+pub const VM_EXIT_INSTRUCTION_LEN: u32 = vmcs_field(VMCS_WIDTH_32, 0x440C);
 
 /// 4 KiB-aligned VMCS region.
 #[repr(C, align(4096))]

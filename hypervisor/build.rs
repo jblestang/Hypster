@@ -30,6 +30,21 @@ fn main() {
     if std::fs::write(path, render_gate_d_plans(&platform, &plans)).is_err() {
         std::process::exit(1);
     }
+    embed_guest_in_image(&workspace, &out_dir);
+}
+
+fn embed_guest_in_image(workspace: &std::path::Path, out_dir: &PathBuf) {
+    let guest_path = workspace.join("target/x86_64-unknown-none/release/guest-in");
+    println!("cargo:rerun-if-changed={}", guest_path.display());
+    let bytes = std::fs::read(&guest_path).unwrap_or_default();
+    let rendered = format!(
+        "pub static GUEST_IN_IMAGE: &[u8] = &{:?};\n",
+        bytes
+    );
+    let path = out_dir.join("guest_in_image.rs");
+    if std::fs::write(path, rendered).is_err() {
+        std::process::exit(1);
+    }
 }
 
 fn render_gate_d_plans(platform: &StaticPlatformIR, plans: &GateDPlans) -> String {
@@ -68,6 +83,7 @@ fn render_gate_d_plans(platform: &StaticPlatformIR, plans: &GateDPlans) -> Strin
         "            vmxon_region_base: HostPhysAddr::new({}),\n",
         plans.gate_c.vmxon_region_base.raw()
     ));
+    out.push_str("            ept_root_hp_as: alloc::vec![],\n");
     out.push_str("        },\n");
     out.push_str("        ipc_channels: alloc::vec![");
     for channel in &plans.ipc_channels {

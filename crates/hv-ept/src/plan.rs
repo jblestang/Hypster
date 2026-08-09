@@ -87,7 +87,7 @@ fn append_mmio_mappings(
     const MMIO_GUEST_BASE: u64 = 0xFEB0_0000;
     const MMIO_GUEST_STRIDE: u64 = 0x10_0000;
     const MMIO_REGION_SIZE: u64 = 128 * 1024;
-    const MMIO_HOST_BASE: u64 = 0x2300_0000;
+    const MMIO_HOST_BASE: u64 = 0x1_1720_0000;
     const MMIO_HOST_STRIDE: u64 = 0x10_0000;
 
     for (idx, _device) in partition.devices.iter().enumerate() {

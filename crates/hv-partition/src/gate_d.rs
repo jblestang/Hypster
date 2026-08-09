@@ -32,12 +32,12 @@ pub fn gate_d_plans_from_platform(
     GateDPlans { gate_c, ipc_channels, config_hash: platform.config_hash, require_config_hash }
 }
 
-/// Gate C MVP table bases used by the hypervisor image.
-pub const EPT_TABLE_BASE: HostPhysAddr = HostPhysAddr::new(0x2000_0000);
+/// Gate C MVP EPT table buffer base (16 MiB), placed after IPC backing.
+pub const EPT_TABLE_BASE: HostPhysAddr = HostPhysAddr::new(0x1_1510_0000);
 /// Gate C MVP VT-d table buffer base (16 MiB reserved).
-pub const VTD_TABLE_BASE: HostPhysAddr = HostPhysAddr::new(0x2100_0000);
+pub const VTD_TABLE_BASE: HostPhysAddr = HostPhysAddr::new(0x1_1610_0000);
 /// Gate C MVP VMXON region base (4 KiB reserved).
-pub const VMXON_REGION_BASE: HostPhysAddr = HostPhysAddr::new(0x2200_0000);
+pub const VMXON_REGION_BASE: HostPhysAddr = HostPhysAddr::new(0x1_1710_0000);
 
 /// Builds Gate D plans with resolved EPT/VT-d tables from platform resolution.
 #[must_use]
@@ -48,6 +48,7 @@ pub fn gate_d_plans_from_resolved(platform: &StaticPlatformIR) -> GateDPlans {
         ept_table_base: EPT_TABLE_BASE,
         vtd_table_base: VTD_TABLE_BASE,
         vmxon_region_base: VMXON_REGION_BASE,
+        ept_root_hp_as: alloc::vec::Vec::new(),
     };
     gate_d_plans_from_platform(platform, gate_c, true)
 }
