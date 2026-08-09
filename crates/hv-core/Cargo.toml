@@ -17,11 +17,16 @@ std = [
     "dep:hv-memory",
     "dep:hv-ept",
     "dep:hv-vtd",
+    "hv-ept/plan",
+    "hv-ept/std",
+    "hv-vtd/plan",
+    "hv-vtd/std",
     "hv-config-model/std",
     "hv-acpi/std",
     "hv-elf/std",
     "hv-cpu-topology/std",
     "hv-memory/std",
+    "hv-config-model/std",
 ]
 
 [dependencies]

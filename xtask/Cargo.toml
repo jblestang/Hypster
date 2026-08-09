@@ -7,8 +7,8 @@ license.workspace = true
 publish = false
 
 [dependencies]
-hv-config-model = { workspace = true }
-hv-core = { workspace = true }
+hv-config-model = { workspace = true, features = ["std"] }
+hv-core = { workspace = true, features = ["std"] }
 
 [lints]
 workspace = true

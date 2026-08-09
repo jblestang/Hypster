@@ -1,18 +1,13 @@
 [package]
 name = "hv-cpu"
-description = "CPU capability probing for the Hypster hypervisor"
+description = "Host CPU feature probing for Hypster"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 
-[features]
-default = []
-std = ["hv-types/std"]
-
 [dependencies]
 hv-types = { workspace = true }
-hv-x86 = { workspace = true }
 
 [lints]
 workspace = true

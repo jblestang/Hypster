@@ -18,7 +18,10 @@ test = false
 [dependencies]
 hv-boot-abi = { workspace = true }
 hv-core = { path = "../crates/hv-core", default-features = false }
-hv-types = { workspace = true }
+hv-runtime = { path = "../crates/hv-runtime" }
+hv-types = { workspace = true, default-features = false }
+hv-ept = { path = "../crates/hv-ept", default-features = false }
+hv-vtd = { path = "../crates/hv-vtd", default-features = false }
 
 [lints]
 workspace = true

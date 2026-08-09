@@ -5,6 +5,8 @@ use core::arch::asm;
 use hv_boot_abi::BootInfo;
 use hv_core::boot::BootPhase;
 
+use crate::plans;
+
 /// Hypervisor entry called by the loader with a pointer to boot info.
 ///
 /// # Safety
@@ -19,27 +21,18 @@ pub unsafe extern "C" fn hypster_entry(boot_info: *const BootInfo) -> ! {
         fail();
     }
 
-    let mut phase = BootPhase::BootServicesExited;
-    phase = advance(phase, BootPhase::MemoryReady);
-    phase = advance(phase, BootPhase::CpuReady);
-    phase = advance(phase, BootPhase::VmxReady);
-    phase = advance(phase, BootPhase::IommuReady);
-    phase = advance(phase, BootPhase::InterruptsReady);
-    phase = advance(phase, BootPhase::PartitionsPrepared);
-    let _ = advance(phase, BootPhase::Running);
+    match plans::run_gate_c_init(info) {
+        Ok(report) => {
+            let _ = report.phase.transition(BootPhase::Running);
+        }
+        Err(_) => fail(),
+    }
 
     loop {
-        // SAFETY: halts until the next interrupt; Gate B has no IDT yet.
+        // SAFETY: halts until the next interrupt; Gate C has no IDT yet.
         unsafe {
             asm!("hlt", options(nomem, nostack, preserves_flags));
         }
-    }
-}
-
-fn advance(current: BootPhase, next: BootPhase) -> BootPhase {
-    match current.transition(next) {
-        Ok(value) => value,
-        Err(_) => fail(),
     }
 }
 

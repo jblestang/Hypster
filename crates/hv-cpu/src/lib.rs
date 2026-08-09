@@ -1,13 +1,10 @@
-//! CPU capability probing for Hypster.
+//! Host CPU feature probing via CPUID.
 
 #![no_std]
 #![warn(missing_docs)]
 
-#[cfg(feature = "std")]
-extern crate std;
-
-pub mod error;
-pub mod probe;
+mod error;
+mod probe;
 
 pub use error::CpuProbeError;
-pub use probe::{probe_cpu_capabilities, validate_vmx_prerequisites, CpuCapabilities};
+pub use probe::{probe_cpu, CpuFeatures};

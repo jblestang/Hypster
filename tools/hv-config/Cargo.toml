@@ -10,7 +10,7 @@ name = "hv-config"
 path = "src/main.rs"
 
 [dependencies]
-hv-config-model = { workspace = true }
+hv-config-model = { workspace = true, features = ["std"] }
 
 [lints]
 workspace = true

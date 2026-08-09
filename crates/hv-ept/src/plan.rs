@@ -9,23 +9,8 @@ use hv_types::arithmetic::{checked_add_u64, ranges_overlap_u64};
 use hv_types::{GuestPhysAddr, VmId};
 
 use crate::error::EptPlanError;
+use crate::model::{EptPartitionPlan, EptPlan};
 use crate::types::{EptMapping, EptMemoryType, EptPermissions};
-
-/// EPT plan for one partition.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct EptPartitionPlan {
-    /// VM identifier.
-    pub vm_id: VmId,
-    /// Guest mappings sorted by GPA.
-    pub mappings: Vec<EptMapping>,
-}
-
-/// Full EPT plan.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct EptPlan {
-    /// Per-partition plans.
-    pub partitions: Vec<EptPartitionPlan>,
-}
 
 /// Builds identity guest RAM EPT mappings from the memory plan.
 pub fn plan_ept(intent: &StaticIntentIR, memory: &MemoryPlan) -> Result<EptPlan, EptPlanError> {
@@ -51,9 +36,6 @@ pub fn plan_ept(intent: &StaticIntentIR, memory: &MemoryPlan) -> Result<EptPlan,
             permissions: EptPermissions::GUEST_RAM,
             memory_type: EptMemoryType::WriteBack,
         };
-        if mapping.size != partition.memory_bytes {
-            // Gate B uses full backing region; sizes must match intent.
-        }
         let mappings = vec![mapping];
         validate_partition(partition.vm_id, &mappings)?;
         partitions.push(EptPartitionPlan {

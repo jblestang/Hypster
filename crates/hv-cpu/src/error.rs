@@ -2,25 +2,26 @@
 
 use core::fmt;
 
-/// Errors produced while probing or validating CPU capabilities.
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// CPU probing failed.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CpuProbeError {
-    /// The host architecture is not supported.
-    UnsupportedArchitecture,
-    /// A required feature for VMX bring-up is missing.
-    MissingRequiredFeature {
-        /// Human-readable feature name.
-        feature: &'static str,
-    },
+    /// CPUID is unavailable on this host.
+    CpuidUnavailable,
+    /// Required VMX support is missing.
+    MissingVmx,
+    /// Required EPT support is missing.
+    MissingEpt,
+    /// Required NX support is missing.
+    MissingNx,
 }
 
 impl fmt::Display for CpuProbeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::UnsupportedArchitecture => f.write_str("cpu probing requires x86_64"),
-            Self::MissingRequiredFeature { feature } => {
-                write!(f, "missing required cpu feature: {feature}")
-            }
+            Self::CpuidUnavailable => write!(f, "CPUID unavailable"),
+            Self::MissingVmx => write!(f, "VMX not supported"),
+            Self::MissingEpt => write!(f, "EPT not supported"),
+            Self::MissingNx => write!(f, "NX not supported"),
         }
     }
 }

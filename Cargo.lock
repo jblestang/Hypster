@@ -263,7 +263,6 @@ dependencies = [
  "hv-core",
  "hv-cpu",
  "hv-ept",
- "hv-memory",
  "hv-types",
  "hv-vmx",
  "hv-vtd",

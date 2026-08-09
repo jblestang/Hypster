@@ -6,14 +6,15 @@ edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 
-[dependencies]
-hv-types = { workspace = true }
-hv-config-model = { workspace = true, features = ["std"] }
-hv-memory = { path = "../hv-memory" }
-
 [features]
 default = []
-std = ["hv-types/std"]
+std = ["hv-types/std", "plan", "hv-config-model/std", "hv-memory/std"]
+plan = ["dep:hv-config-model", "dep:hv-memory"]
+
+[dependencies]
+hv-types = { workspace = true }
+hv-config-model = { workspace = true, optional = true, default-features = false }
+hv-memory = { path = "../hv-memory", optional = true, default-features = false }
 
 [lints]
 workspace = true

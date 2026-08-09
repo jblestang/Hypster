@@ -8,9 +8,8 @@ use hv_cpu::probe_cpu;
 use hv_ept::install_ept_mappings;
 use hv_types::HostPhysAddr;
 use hv_vtd::install_vtd_domains;
-use hv_vmx::VmxHostInit;
 #[cfg(all(feature = "hardware", target_arch = "x86_64"))]
-use hv_vmx::{VmxonRegion, VMXON_REGION_SIZE};
+use hv_vmx::{VmxHostInit, VmxonRegion, VMXON_REGION_SIZE};
 
 use crate::error::RuntimeError;
 

@@ -10,11 +10,15 @@ extern crate alloc;
 
 pub mod error;
 pub mod install;
+pub mod model;
+#[cfg(feature = "plan")]
 pub mod plan;
 pub mod table;
 pub mod types;
 
 pub use error::EptPlanError;
 pub use install::{install_ept_mappings, EptInstallResult, EptPageTable};
-pub use plan::{plan_ept, EptPartitionPlan, EptPlan};
+pub use model::{EptPartitionPlan, EptPlan};
+#[cfg(feature = "plan")]
+pub use plan::plan_ept;
 pub use types::{EptMapping, EptMemoryType, EptPermissions};

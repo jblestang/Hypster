@@ -3,7 +3,7 @@
 use hv_types::{HostPhysAddr, PciBdf};
 
 use crate::error::VtdPlanError;
-use crate::plan::VtdDomainPlan;
+use crate::model::VtdDomainPlan;
 use crate::table::{
     context_entry, context_index, root_entry, CONTEXT_ENTRY_SIZE, CONTEXT_TABLE_SIZE,
     ROOT_ENTRY_SIZE, ROOT_TABLE_SIZE,
@@ -151,7 +151,7 @@ pub fn install_vtd_domains(
 #[cfg(test)]
 mod tests {
     use super::{install_vtd_domains, VtdHardwareState};
-    use crate::plan::VtdDomainPlan;
+    use crate::model::VtdDomainPlan;
     use crate::table::{CONTEXT_TABLE_SIZE, ROOT_TABLE_SIZE};
     use alloc::string::ToString;
     use alloc::vec;

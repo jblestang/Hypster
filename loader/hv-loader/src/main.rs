@@ -1,23 +1,20 @@
-//! UEFI loader entry for Hypster (Gate B skeleton).
-//!
-//! Gate B validates BootInfo construction and firmware table discovery.
-//! Transfer to the hypervisor after `ExitBootServices` is completed in Gate C.
+//! UEFI loader entry for Hypster (Gate C boot handoff).
 
 #![no_main]
 #![no_std]
+
+mod boot_info;
+mod handoff;
 
 use core::panic::PanicInfo;
 
 use uefi::allocator::Allocator;
 use uefi::prelude::*;
+use uefi::table::boot::MemoryType;
 use uefi::table::cfg::{ACPI2_GUID, ACPI_GUID};
 
-use hv_boot_abi::{
-    BootAcpiInfo, BootInfo, BootInfoHeader, BOOT_ABI_VERSION_MAJOR, BOOT_ABI_VERSION_MINOR,
-    BOOT_INFO_MAGIC,
-};
-
-const HV_CONFIG_HASH_PLACEHOLDER: [u8; 32] = [0; 32];
+use boot_info::{build_boot_info_blob, load_hypervisor_image};
+use handoff::jump_to_hypervisor;
 
 #[global_allocator]
 static GLOBAL: Allocator = Allocator;
@@ -45,29 +42,35 @@ fn find_rsdp_address(system_table: &SystemTable<Boot>) -> u64 {
 
 #[entry]
 fn main(_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
-    // SAFETY: Gate C must call `uefi::allocator::exit_boot_services` before ExitBootServices.
+    // SAFETY: required before ExitBootServices per uefi crate contract.
     unsafe {
         uefi::allocator::init(&mut system_table);
     }
 
     let rsdp_address = find_rsdp_address(&system_table);
+    let boot_services = system_table.boot_services();
 
-    let boot_info = BootInfo {
-        header: BootInfoHeader {
-            magic: BOOT_INFO_MAGIC,
-            version_major: BOOT_ABI_VERSION_MAJOR,
-            version_minor: BOOT_ABI_VERSION_MINOR,
-            total_size: core::mem::size_of::<BootInfo>() as u32,
-            config_hash: HV_CONFIG_HASH_PLACEHOLDER,
-        },
-        acpi: BootAcpiInfo { rsdp_address },
-        memory_map_entry_count: 0,
-        flags: 0,
-    };
+    let hypervisor = load_hypervisor_image(boot_services);
 
-    if boot_info.header.is_compatible() {
-        Status::SUCCESS
-    } else {
-        Status::LOAD_ERROR
-    }
+    let mmap_size = boot_services.memory_map_size();
+    let mut mmap_buf = vec![0u8; mmap_size.map_size + mmap_size.entry_size * 8];
+    let memory_map = boot_services
+        .memory_map(&mut mmap_buf)
+        .map_err(|_| Status::OUT_OF_RESOURCES)?;
+
+    let blob = build_boot_info_blob(
+        boot_services,
+        &memory_map,
+        rsdp_address,
+        hypervisor,
+    )
+    .map_err(|status| status)?;
+
+    let boot_info_ptr = blob.phys_addr as *const hv_boot_abi::BootInfo;
+
+    let (_runtime, final_map) = system_table.exit_boot_services(MemoryType::LOADER_DATA);
+
+    let _ = final_map;
+
+    jump_to_hypervisor(hypervisor.entry, boot_info_ptr);
 }

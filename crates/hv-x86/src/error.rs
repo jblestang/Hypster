@@ -2,17 +2,23 @@
 
 use core::fmt;
 
-/// Errors returned by x86 intrinsics wrappers.
+/// Physical memory access failed.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum X86Error {
-    /// The current target architecture is not x86_64.
-    UnsupportedArchitecture,
+    /// Address is not identity-mapped in the current environment.
+    NotMapped,
+    /// Read would overflow the address space.
+    Overflow,
 }
 
 impl fmt::Display for X86Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::UnsupportedArchitecture => f.write_str("x86_64 intrinsics are unavailable"),
+            Self::NotMapped => write!(f, "physical address not mapped"),
+            Self::Overflow => write!(f, "physical read overflow"),
         }
     }
 }
+
+#[cfg(feature = "std")]
+impl std::error::Error for X86Error {}

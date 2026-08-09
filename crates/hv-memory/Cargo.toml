@@ -8,11 +8,11 @@ rust-version.workspace = true
 
 [features]
 default = []
-std = ["hv-types/std"]
+std = ["hv-types/std", "hv-config-model/std"]
 
 [dependencies]
 hv-types = { workspace = true }
-hv-config-model = { workspace = true, features = ["std"] }
+hv-config-model = { workspace = true, default-features = false }
 
 [dev-dependencies]
 proptest = { workspace = true }

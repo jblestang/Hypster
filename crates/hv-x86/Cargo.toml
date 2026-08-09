@@ -1,13 +1,13 @@
 [package]
 name = "hv-x86"
-description = "x86_64 intrinsics wrappers for the Hypster hypervisor"
+description = "Low-level x86 helpers for Hypster"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 
-[features]
-default = []
+[dependencies]
+hv-types = { workspace = true }
 
 [lints]
 workspace = true
