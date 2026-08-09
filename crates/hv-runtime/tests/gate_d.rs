@@ -102,6 +102,9 @@ fn gate_d_runtime_initialize_with_allocated_ipc_backing() {
         Ok(report) => {
             assert_eq!(report.partitions.ipc_rings, 2);
             assert_eq!(report.partitions.partitions, 3);
+            assert_eq!(report.launch.planned_launches, 3);
+            assert_eq!(report.launch.vmcs_field_sets, 3);
+            assert!(report.launch.mmio_devices >= 2);
         }
         Err(err) => {
             assert!(
@@ -146,6 +149,29 @@ fn gate_d_config_hash_mismatch_is_fail_closed() {
         initialize_gate_d(&info, &plans),
         Err(hv_runtime::RuntimeError::ConfigHashMismatch)
     ));
+}
+
+#[test]
+fn gate_d_e1000_mmio_status_is_link_up() {
+    let state = hv_e1000::E1000DeviceState::new_link_up();
+    let status = hv_e1000::mmio_read(&state, hv_e1000::REG_STATUS).expect("status");
+    assert_ne!(status & 0x80, 0);
+}
+
+#[test]
+fn gate_d_guest_vmcs_launch_plan_includes_ept_pointer() {
+    use hv_types::{GuestPhysAddr, HostPhysAddr, VmId};
+    use hv_vmx::{build_guest_vmcs_fields, vmcs::EPT_POINTER, GuestLaunchPlan};
+    let plan = GuestLaunchPlan {
+        vm_id: VmId::new(0),
+        vmcs_hpa: HostPhysAddr::new(0x2400_0000),
+        guest_entry: GuestPhysAddr::new(0x1000),
+        guest_stack: GuestPhysAddr::new(0x8000),
+        ept_root_hpa: HostPhysAddr::new(0x2000_1000),
+        guest_boot_info_gpa: GuestPhysAddr::new(0x9000),
+    };
+    let fields = build_guest_vmcs_fields(&plan).expect("fields");
+    assert!(fields.iter().any(|field| field.field == EPT_POINTER));
 }
 
 #[test]

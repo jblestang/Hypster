@@ -36,6 +36,7 @@ pub fn plan_ept(intent: &StaticIntentIR, memory: &MemoryPlan) -> Result<EptPlan,
         }];
 
         append_ipc_mappings(intent, memory, partition.vm_id, &mut mappings)?;
+        append_mmio_mappings(partition, &mut mappings)?;
         validate_partition(partition.vm_id, &mappings)?;
         partitions.push(EptPartitionPlan { vm_id: partition.vm_id, mappings });
     }
@@ -75,6 +76,32 @@ fn append_ipc_mappings(
             memory_type: EptMemoryType::WriteBack,
         });
         cursor = cursor.checked_add(channel.shared_bytes).ok_or(EptPlanError::Overflow)?;
+    }
+    Ok(())
+}
+
+fn append_mmio_mappings(
+    partition: &hv_config_model::intent::PartitionIntent,
+    mappings: &mut Vec<EptMapping>,
+) -> Result<(), EptPlanError> {
+    const MMIO_GUEST_BASE: u64 = 0xFEB0_0000;
+    const MMIO_GUEST_STRIDE: u64 = 0x10_0000;
+    const MMIO_REGION_SIZE: u64 = 128 * 1024;
+    const MMIO_HOST_BASE: u64 = 0x2300_0000;
+    const MMIO_HOST_STRIDE: u64 = 0x10_0000;
+
+    for (idx, _device) in partition.devices.iter().enumerate() {
+        mappings.push(EptMapping {
+            guest_phys: GuestPhysAddr::new(MMIO_GUEST_BASE + (idx as u64) * MMIO_GUEST_STRIDE),
+            host_phys: hv_types::HostPhysAddr::new(
+                MMIO_HOST_BASE
+                    + (partition.vm_id.raw() as u64) * MMIO_HOST_STRIDE
+                    + (idx as u64) * MMIO_HOST_STRIDE,
+            ),
+            size: MMIO_REGION_SIZE,
+            permissions: EptPermissions::MMIO,
+            memory_type: EptMemoryType::Uncacheable,
+        });
     }
     Ok(())
 }

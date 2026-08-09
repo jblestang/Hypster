@@ -33,6 +33,8 @@ hv-config-model = { workspace = true, features = ["std"] }
 hv-boot-abi = { workspace = true }
 hv-guest-abi = { workspace = true }
 hv-ipc = { path = "../hv-ipc", features = ["std"] }
+hv-e1000 = { path = "../hv-e1000", features = ["std"] }
+hv-vmx = { path = "../hv-vmx" }
 
 [lints]
 workspace = true

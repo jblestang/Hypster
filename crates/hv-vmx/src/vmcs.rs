@@ -56,6 +56,35 @@ pub const HOST_RSP: u32 = vmcs_field(VMCS_WIDTH_NATURAL, 0x6C14);
 /// Host RIP.
 pub const HOST_RIP: u32 = vmcs_field(VMCS_WIDTH_NATURAL, 0x6C16);
 
+/// Guest CR0.
+pub const GUEST_CR0: u32 = vmcs_field(VMCS_WIDTH_NATURAL, 0x6800);
+/// Guest CR3.
+pub const GUEST_CR3: u32 = vmcs_field(VMCS_WIDTH_NATURAL, 0x6802);
+/// Guest CR4.
+pub const GUEST_CR4: u32 = vmcs_field(VMCS_WIDTH_NATURAL, 0x6804);
+/// Guest RSP.
+pub const GUEST_RSP: u32 = vmcs_field(VMCS_WIDTH_NATURAL, 0x681C);
+/// Guest RIP.
+pub const GUEST_RIP: u32 = vmcs_field(VMCS_WIDTH_NATURAL, 0x681E);
+/// Guest RFLAGS.
+pub const GUEST_RFLAGS: u32 = vmcs_field(VMCS_WIDTH_NATURAL, 0x6820);
+
+/// VMCS link pointer (64-bit).
+pub const VMCS_LINK_POINTER: u32 = vmcs_field(VMCS_WIDTH_64, 0x2800);
+/// EPT pointer (64-bit).
+pub const EPT_POINTER: u32 = vmcs_field(VMCS_WIDTH_64, 0x201A);
+
+/// Pin-based VM execution controls.
+pub const PIN_BASED_VM_EXEC_CONTROL: u32 = vmcs_field(VMCS_WIDTH_32, 0x4000);
+/// Primary processor-based VM execution controls.
+pub const PROC_BASED_VM_EXEC_CONTROL: u32 = vmcs_field(VMCS_WIDTH_32, 0x401E);
+/// Secondary processor-based VM execution controls.
+pub const SECONDARY_PROC_BASED_VM_EXEC_CONTROL: u32 = vmcs_field(VMCS_WIDTH_32, 0x401B);
+/// VM-exit controls.
+pub const VM_EXIT_CONTROLS: u32 = vmcs_field(VMCS_WIDTH_32, 0x400C);
+/// VM-entry controls.
+pub const VM_ENTRY_CONTROLS: u32 = vmcs_field(VMCS_WIDTH_32, 0x4012);
+
 /// 4 KiB-aligned VMCS region.
 #[repr(C, align(4096))]
 #[derive(Clone, Copy)]

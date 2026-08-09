@@ -31,6 +31,16 @@ pub enum VmxError {
     VmclearFailed,
     /// VMPTRLD instruction failed.
     VmptrldFailed,
+    /// VMREAD instruction failed.
+    VmreadFailed,
+    /// VMWRITE instruction failed.
+    VmwriteFailed,
+    /// VMLAUNCH instruction failed.
+    VmlaunchFailed,
+    /// Guest launch plan violates alignment or layout invariants.
+    InvalidGuestLaunchPlan,
+    /// EPT root is not page aligned.
+    MisalignedEptRoot,
 }
 
 impl fmt::Display for VmxError {
@@ -51,6 +61,11 @@ impl fmt::Display for VmxError {
             Self::MisalignedVmcsRegion => f.write_str("VMCS region not 4 KiB aligned"),
             Self::VmclearFailed => f.write_str("VMCLEAR failed"),
             Self::VmptrldFailed => f.write_str("VMPTRLD failed"),
+            Self::VmreadFailed => f.write_str("VMREAD failed"),
+            Self::VmwriteFailed => f.write_str("VMWRITE failed"),
+            Self::VmlaunchFailed => f.write_str("VMLAUNCH failed"),
+            Self::InvalidGuestLaunchPlan => f.write_str("invalid guest launch plan"),
+            Self::MisalignedEptRoot => f.write_str("EPT root not page aligned"),
         }
     }
 }

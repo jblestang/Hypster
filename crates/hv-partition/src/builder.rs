@@ -131,13 +131,13 @@ fn build_mmio_regions(partition: &PartitionIntent) -> Vec<GuestMmioRegion> {
     let mut out = Vec::new();
     for (idx, device) in partition.devices.iter().enumerate() {
         let device_hash = ipc_name_hash(&device.bdf);
-        out.push(GuestMmioRegion { base: mmio_guest_base(idx), size: 128 * 1024, device_hash });
+        out.push(GuestMmioRegion {
+            base: crate::layout::mmio_guest_phys(idx),
+            size: crate::layout::MMIO_REGION_SIZE,
+            device_hash,
+        });
     }
     out
-}
-
-fn mmio_guest_base(device_index: usize) -> u64 {
-    0xFEB0_0000u64 + (device_index as u64) * 0x10_0000
 }
 
 fn write_struct<T: Copy>(bytes: &mut [u8], offset: usize, value: &T) -> Result<(), PartitionError> {

@@ -55,6 +55,8 @@ pub struct GateDInitReport {
     pub gate_c: RuntimeInitReport,
     /// Partition and IPC preparation summary.
     pub partitions: crate::partition::PartitionPrepReport,
+    /// Guest launch planning summary.
+    pub launch: crate::launch::LaunchPrepReport,
 }
 
 /// Initializes the hypervisor runtime from loader-provided boot info.
@@ -112,7 +114,8 @@ pub fn initialize_gate_d(
     )?;
     let gate_c = initialize(boot_info, &plans.gate_c)?;
     let partitions = crate::partition::prepare_ipc_rings(plans, plans.gate_c.ept.partitions.len())?;
-    Ok(GateDInitReport { gate_c, partitions })
+    let launch = crate::launch::prepare_partition_launches(plans)?;
+    Ok(GateDInitReport { gate_c, partitions, launch })
 }
 
 fn advance_phase(current: BootPhase, next: BootPhase) -> Result<BootPhase, RuntimeError> {

@@ -247,6 +247,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "hv-e1000"
+version = "0.1.0"
+dependencies = [
+ "hv-types",
+]
+
+[[package]]
 name = "hv-elf"
 version = "0.1.0"
 dependencies = [
@@ -318,6 +325,7 @@ dependencies = [
  "hv-config-model",
  "hv-core",
  "hv-cpu",
+ "hv-e1000",
  "hv-ept",
  "hv-guest-abi",
  "hv-ipc",

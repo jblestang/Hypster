@@ -226,11 +226,7 @@ fn slot_ref(backing: &[u8], offset: usize, slot_size: usize) -> Result<&[u8], Ip
     Ok(&backing[offset..end])
 }
 
-fn slot_mut(
-    backing: &mut [u8],
-    offset: usize,
-    slot_size: usize,
-) -> Result<&mut [u8], IpcError> {
+fn slot_mut(backing: &mut [u8], offset: usize, slot_size: usize) -> Result<&mut [u8], IpcError> {
     let end = offset.checked_add(slot_size).ok_or(IpcError::Overflow)?;
     if end > backing.len() {
         return Err(IpcError::BufferTooSmall);

@@ -221,8 +221,8 @@ mod tests {
     #![allow(clippy::expect_used)]
 
     use super::*;
-    use crate::{GuestBootInfoHeader, GUEST_ABI_VERSION_MAJOR, GUEST_BOOT_INFO_MAGIC};
     use crate::GUEST_ABI_VERSION_MINOR;
+    use crate::{GuestBootInfoHeader, GUEST_ABI_VERSION_MAJOR, GUEST_BOOT_INFO_MAGIC};
 
     fn sample_prefix(memory_count: u32, ipc_count: u32, mmio_count: u32) -> (GuestBootInfo, usize) {
         let total =

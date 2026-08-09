@@ -74,6 +74,9 @@ sufficient for silicon-specific properties.
 | Embedded platform plans (hypervisor) | BUILD |
 | Guest partition stubs | BUILD (`x86_64-unknown-none`) |
 | End-to-end datapath (e1000, UDP) | QEMU (future) |
+| Guest VMCS launch planning | UNIT + Gate D integration tests |
+| e1000 MMIO decode skeleton | UNIT + malicious tests |
+| EPT MMIO device mappings | UNIT + Gate D integration tests |
 | CPU/DMA isolation with guests | QEMU + REAL_HW (future) |
 
 ## Gates
