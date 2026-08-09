@@ -8,5 +8,6 @@ extern crate alloc;
 mod datapath;
 pub mod entry;
 mod plans;
+mod serial;
 
 pub use entry::hypster_entry;

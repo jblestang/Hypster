@@ -74,11 +74,12 @@ sufficient for silicon-specific properties.
 | Embedded platform plans (hypervisor) | BUILD |
 | Guest partition stubs | BUILD (`x86_64-unknown-none`) |
 | Guest MID IPC relay loop | BUILD + UNIT (`guest-common`) |
-| End-to-end datapath (e1000, UDP) | UNIT + host-assisted integration (`cargo xtask datapath smoke`) |
+| End-to-end datapath (e1000, UDP) | UNIT + host-assisted integration (`cargo xtask datapath smoke`) + QEMU boot self-test (`cargo xtask datapath e2e`) |
 | Guest VMCS launch planning | UNIT + Gate D integration tests |
 | e1000 MMIO decode skeleton | UNIT + malicious tests |
 | EPT MMIO device mappings | UNIT + Gate D integration tests |
 | CPU/DMA isolation with guests | QEMU + REAL_HW (future) |
+| QEMU/OVMF boot packaging | BUILD (`cargo xtask qemu prepare`) + QEMU (`cargo xtask qemu smoke`) |
 
 ## Gates
 

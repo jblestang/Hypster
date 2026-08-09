@@ -101,10 +101,10 @@ qemu:
   netdevs:
     - id: net0
       kind: user
-      hostfwd: "127.0.0.1:5001-:5001"
+      hostfwd: "tcp:127.0.0.1:5001-:5001"
     - id: net1
       kind: user
-      hostfwd: "127.0.0.1:5002-:5002"
+      hostfwd: "tcp:127.0.0.1:5002-:5002"
   devices:
     - kind: e1000
       bdf: "0000:00:03.0"

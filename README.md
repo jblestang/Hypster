@@ -26,6 +26,8 @@ cargo xtask config validate configs/qemu.yaml
 cargo xtask config generate configs/qemu.yaml
 cargo xtask platform resolve configs/qemu.yaml
 cargo xtask datapath smoke
+cargo xtask qemu prepare
+cargo xtask qemu smoke
 cargo clippy --workspace --all-targets -- -D warnings
 cargo clippy -p hv-loader --target x86_64-unknown-uefi --all-features -- -D warnings
 cargo clippy -p hypster --target x86_64-unknown-none --all-features -- -D warnings

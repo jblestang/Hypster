@@ -4,20 +4,27 @@ use hv_acpi::parse_rsdp;
 use hv_acpi::rsdp::RSDP_V2_LEN;
 use hv_boot_abi::{layout, BootInfo};
 use hv_core::boot::BootPhase;
+use hv_cpu::probe_cpu_optional;
+#[cfg(all(feature = "hardware", target_arch = "x86_64"))]
 use hv_cpu::probe_cpu;
+#[cfg(all(feature = "hardware", target_arch = "x86_64"))]
 use hv_ept::install_ept_mappings;
 use hv_types::HostPhysAddr;
 #[cfg(all(feature = "hardware", target_arch = "x86_64"))]
 use hv_vmx::{VmxHostInit, VmxonRegion, VMXON_REGION_SIZE};
+#[cfg(all(feature = "hardware", target_arch = "x86_64"))]
 use hv_vtd::install_vtd_domains;
 
 use crate::error::RuntimeError;
 
 /// Gate C MVP DRHD register base (QEMU q35).
+#[cfg_attr(not(all(feature = "hardware", target_arch = "x86_64")), allow(dead_code))]
 pub const DEFAULT_DRHD_BASE: u64 = 0xFED9_0000;
 /// Gate C MVP reserved size for EPT table buffers (16 MiB).
+#[cfg_attr(not(all(feature = "hardware", target_arch = "x86_64")), allow(dead_code))]
 pub const EPT_TABLE_REGION_BYTES: usize = 16 * 1024 * 1024;
 /// Gate C MVP reserved size for VT-d table buffers (16 MiB).
+#[cfg_attr(not(all(feature = "hardware", target_arch = "x86_64")), allow(dead_code))]
 pub const VT_D_TABLE_REGION_BYTES: usize = 16 * 1024 * 1024;
 
 /// Static plans and table bases passed from hypervisor image data.
@@ -81,7 +88,7 @@ pub fn initialize(
 
     let _memory_map = memory_descriptors(boot_info);
 
-    probe_cpu()?;
+    probe_cpu_for_runtime()?;
     phase = advance_phase(phase, BootPhase::CpuReady)?;
 
     verify_rsdp(boot_info)?;
@@ -147,43 +154,70 @@ fn verify_rsdp(boot_info: &BootInfo) -> Result<(), RuntimeError> {
 }
 
 fn install_ept_tables(plans: &GateCPlans) -> Result<usize, RuntimeError> {
-    let base = plans.ept_table_base.raw();
-    if base == 0 {
-        return Err(RuntimeError::TableRegionUnavailable);
-    }
-    let table_ptr = base as *mut u8;
-    let table_bytes = unsafe { core::slice::from_raw_parts_mut(table_ptr, EPT_TABLE_REGION_BYTES) };
+    #[cfg(all(feature = "hardware", target_arch = "x86_64"))]
+    {
+        let base = plans.ept_table_base.raw();
+        if base == 0 {
+            return Err(RuntimeError::TableRegionUnavailable);
+        }
+        let table_ptr = base as *mut u8;
+        let table_bytes =
+            unsafe { core::slice::from_raw_parts_mut(table_ptr, EPT_TABLE_REGION_BYTES) };
 
-    let mut offset = 0usize;
-    for partition in &plans.ept.partitions {
-        if partition.mappings.is_empty() {
-            continue;
+        let mut offset = 0usize;
+        for partition in &plans.ept.partitions {
+            if partition.mappings.is_empty() {
+                continue;
+            }
+            if offset >= table_bytes.len() {
+                return Err(RuntimeError::Ept(hv_ept::EptPlanError::BufferTooSmall));
+            }
+            let sub = &mut table_bytes[offset..];
+            let sub_base = HostPhysAddr::new(base + offset as u64);
+            let result = install_ept_mappings(sub, sub_base, &partition.mappings)?;
+            offset += result.bytes_used;
         }
-        if offset >= table_bytes.len() {
-            return Err(RuntimeError::Ept(hv_ept::EptPlanError::BufferTooSmall));
-        }
-        let sub = &mut table_bytes[offset..];
-        let sub_base = HostPhysAddr::new(base + offset as u64);
-        let result = install_ept_mappings(sub, sub_base, &partition.mappings)?;
-        offset += result.bytes_used;
+        Ok(plans.ept.partitions.len())
     }
-    Ok(plans.ept.partitions.len())
+    #[cfg(not(all(feature = "hardware", target_arch = "x86_64")))]
+    {
+        Ok(plans.ept.partitions.len())
+    }
 }
 
 fn install_vtd_tables(plans: &GateCPlans) -> Result<usize, RuntimeError> {
-    if plans.vtd.domains.is_empty() {
-        return Ok(0);
+    #[cfg(all(feature = "hardware", target_arch = "x86_64"))]
+    {
+        if plans.vtd.domains.is_empty() {
+            return Ok(0);
+        }
+        let base = plans.vtd_table_base.raw();
+        if base == 0 {
+            return Err(RuntimeError::TableRegionUnavailable);
+        }
+        let table_ptr = base as *mut u8;
+        let table_bytes =
+            unsafe { core::slice::from_raw_parts_mut(table_ptr, VT_D_TABLE_REGION_BYTES) };
+        let drhd = HostPhysAddr::new(DEFAULT_DRHD_BASE);
+        install_vtd_domains(table_bytes, plans.vtd_table_base, &plans.vtd.domains, drhd)?;
+        Ok(plans.vtd.domains.len())
     }
-    let base = plans.vtd_table_base.raw();
-    if base == 0 {
-        return Err(RuntimeError::TableRegionUnavailable);
+    #[cfg(not(all(feature = "hardware", target_arch = "x86_64")))]
+    {
+        Ok(plans.vtd.domains.len())
     }
-    let table_ptr = base as *mut u8;
-    let table_bytes =
-        unsafe { core::slice::from_raw_parts_mut(table_ptr, VT_D_TABLE_REGION_BYTES) };
-    let drhd = HostPhysAddr::new(DEFAULT_DRHD_BASE);
-    install_vtd_domains(table_bytes, plans.vtd_table_base, &plans.vtd.domains, drhd)?;
-    Ok(plans.vtd.domains.len())
+}
+
+fn probe_cpu_for_runtime() -> Result<(), RuntimeError> {
+    #[cfg(all(feature = "hardware", target_arch = "x86_64"))]
+    {
+        probe_cpu().map_err(RuntimeError::Cpu)
+    }
+    #[cfg(not(all(feature = "hardware", target_arch = "x86_64")))]
+    {
+        let _ = probe_cpu_optional();
+        Ok(())
+    }
 }
 
 fn enable_vmx(plans: &GateCPlans) -> Result<bool, RuntimeError> {

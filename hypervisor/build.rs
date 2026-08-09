@@ -9,8 +9,10 @@ use hv_partition::gate_d_plans_from_resolved;
 use hv_runtime::GateDPlans;
 
 fn main() {
-    println!("cargo:rerun-if-changed=configs/qemu.yaml");
     let manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").expect("manifest dir"));
+    println!("cargo:rerun-if-changed=configs/qemu.yaml");
+    println!("cargo:rerun-if-changed=hypster.ld");
+    println!("cargo:rustc-link-arg=-T{}/hypster.ld", manifest_dir.display());
     let workspace = manifest_dir.parent().expect("workspace root");
     let config_path = workspace.join("configs/qemu.yaml");
 

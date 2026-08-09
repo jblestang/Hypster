@@ -29,8 +29,10 @@ pub struct HypervisorImage {
 }
 
 impl HypervisorImage {
+    /// Fixed load address matching `hypervisor/hypster.ld`.
+    pub const LOAD_ADDRESS: u64 = 0x100000;
     /// Placeholder entry used when `\EFI\hypster\hypster.bin` is unavailable.
-    pub const PLACEHOLDER_ENTRY: u64 = 0x100000;
+    pub const PLACEHOLDER_ENTRY: u64 = Self::LOAD_ADDRESS;
 }
 
 /// Allocated boot info buffer and associated metadata.
@@ -117,7 +119,7 @@ pub fn load_hypervisor_image(boot_services: &BootServices) -> HypervisorImage {
         Ok(image) => image,
         Err(_) => HypervisorImage {
             entry: HypervisorImage::PLACEHOLDER_ENTRY,
-            load_base: HypervisorImage::PLACEHOLDER_ENTRY,
+            load_base: HypervisorImage::LOAD_ADDRESS,
         },
     }
 }
@@ -138,8 +140,13 @@ fn try_load_hypster_bin(boot_services: &BootServices) -> Result<HypervisorImage,
     }
 
     let page_count = (data.len() + 4095) / 4096;
-    let load_base = boot_services
-        .allocate_pages(AllocateType::AnyPages, MemoryType::LOADER_DATA, page_count)
+    let load_base = HypervisorImage::LOAD_ADDRESS;
+    // SAFETY: best-effort release of a prior loader allocation at the fixed load address.
+    unsafe {
+        boot_services.free_pages(load_base, page_count).ok();
+    }
+    boot_services
+        .allocate_pages(AllocateType::Address(load_base), MemoryType::LOADER_DATA, page_count)
         .map_err(|err| err.status())?;
 
     // SAFETY: writing into UEFI allocated pages.
