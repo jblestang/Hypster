@@ -21,9 +21,9 @@ pub unsafe extern "C" fn hypster_entry(boot_info: *const BootInfo) -> ! {
         fail();
     }
 
-    match plans::run_gate_c_init(info) {
+    match plans::run_gate_d_init(info) {
         Ok(report) => {
-            let _ = report.phase.transition(BootPhase::Running);
+            let _ = report.gate_c.phase.transition(BootPhase::Running);
         }
         Err(_) => fail(),
     }

@@ -1,5 +1,10 @@
 //! Boot info blob construction in UEFI allocated memory.
 
+mod config_hash {
+    #![allow(dead_code, missing_docs)]
+    include!(concat!(env!("OUT_DIR"), "/config_hash.rs"));
+}
+
 use core::mem::{align_of, size_of};
 use core::ptr;
 
@@ -11,8 +16,8 @@ use hv_boot_abi::{
     BOOT_ABI_VERSION_MINOR, BOOT_INFO_MAGIC,
 };
 
-/// Placeholder config hash until Gate D wires validated configuration.
-pub const HV_CONFIG_HASH_PLACEHOLDER: [u8; 32] = [0; 32];
+/// Validated configuration hash embedded at build time from `configs/qemu.yaml`.
+pub use config_hash::HV_CONFIG_HASH;
 
 /// Hypervisor load result.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -67,7 +72,7 @@ pub fn build_boot_info_blob(
             version_major: BOOT_ABI_VERSION_MAJOR,
             version_minor: BOOT_ABI_VERSION_MINOR,
             total_size,
-            config_hash: HV_CONFIG_HASH_PLACEHOLDER,
+            config_hash: config_hash::HV_CONFIG_HASH,
         },
         acpi: BootAcpiInfo { rsdp_address },
         memory_map_entry_count: entry_count,

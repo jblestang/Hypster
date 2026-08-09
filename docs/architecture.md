@@ -69,8 +69,9 @@ properties are fail-closed.
 - Phase 0–3: workspace, config pipeline, ABIs
 - Gate B: ACPI/ELF parsers, planners, `StaticPlatformIR`, boot FSM skeleton
 - Gate C: VMX/EPT/VT-d install, loader handoff, `hv-runtime` init
+- Gate D: IPC rings, guest boot info, EPT IPC mappings, embedded platform plans, guest stubs
 
-Virtualization guest datapath (e1000, IPC rings) begins at Gate D.
+Virtualization guest datapath (e1000 MMIO, VMLAUNCH, UDP benchmark) continues after Gate D MVP.
 
 ## Safety ordering
 

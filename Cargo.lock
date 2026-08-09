@@ -140,6 +140,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "guest-common"
+version = "0.1.0"
+dependencies = [
+ "hv-guest-abi",
+ "hv-types",
+]
+
+[[package]]
+name = "guest-in"
+version = "0.1.0"
+dependencies = [
+ "guest-common",
+ "hv-guest-abi",
+]
+
+[[package]]
+name = "guest-mid"
+version = "0.1.0"
+dependencies = [
+ "guest-common",
+ "hv-guest-abi",
+]
+
+[[package]]
+name = "guest-out"
+version = "0.1.0"
+dependencies = [
+ "guest-common",
+ "hv-guest-abi",
+]
+
+[[package]]
 name = "hashbrown"
 version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -238,10 +270,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "hv-ipc"
+version = "0.1.0"
+dependencies = [
+ "hv-types",
+]
+
+[[package]]
 name = "hv-loader"
 version = "0.1.0"
 dependencies = [
  "hv-boot-abi",
+ "hv-config-model",
  "uefi",
 ]
 
@@ -255,14 +295,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "hv-partition"
+version = "0.1.0"
+dependencies = [
+ "hv-config-model",
+ "hv-core",
+ "hv-ept",
+ "hv-guest-abi",
+ "hv-ipc",
+ "hv-memory",
+ "hv-runtime",
+ "hv-types",
+ "hv-vtd",
+]
+
+[[package]]
 name = "hv-runtime"
 version = "0.1.0"
 dependencies = [
  "hv-acpi",
  "hv-boot-abi",
+ "hv-config-model",
  "hv-core",
  "hv-cpu",
  "hv-ept",
+ "hv-guest-abi",
+ "hv-ipc",
+ "hv-partition",
  "hv-types",
  "hv-vmx",
  "hv-vtd",
@@ -305,8 +364,10 @@ name = "hypster"
 version = "0.1.0"
 dependencies = [
  "hv-boot-abi",
+ "hv-config-model",
  "hv-core",
  "hv-ept",
+ "hv-partition",
  "hv-runtime",
  "hv-types",
  "hv-vtd",

@@ -10,6 +10,13 @@ pub enum EptPlanError {
         /// VM identifier.
         vm_id: u32,
     },
+    /// IPC channel backing region missing from memory plan.
+    MissingIpcChannel {
+        /// VM identifier.
+        vm_id: u32,
+        /// Channel name.
+        channel: alloc::string::String,
+    },
     /// EPT mapping overlap within a partition.
     MappingOverlap {
         /// VM identifier.
@@ -30,6 +37,9 @@ impl fmt::Display for EptPlanError {
         match self {
             Self::MissingGuestRam { vm_id } => {
                 write!(f, "missing guest RAM backing for vm{vm_id}")
+            }
+            Self::MissingIpcChannel { vm_id, channel } => {
+                write!(f, "missing IPC channel `{channel}` backing for vm{vm_id}")
             }
             Self::MappingOverlap { vm_id } => write!(f, "EPT mappings overlap for vm{vm_id}"),
             Self::Overflow => f.write_str("EPT planner overflow"),

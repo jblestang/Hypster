@@ -14,6 +14,8 @@
 #![no_std]
 #![warn(missing_docs)]
 
+pub mod layout;
+
 use hv_types::{GuestPhysAddr, VcpuId, VmId};
 
 /// Major guest ABI version.

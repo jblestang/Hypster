@@ -9,6 +9,7 @@ rust-version.workspace = true
 [features]
 default = []
 hardware = ["hv-vmx/hardware"]
+std = ["hv-config-model/std", "hv-types/std", "hv-ipc/std"]
 
 [dependencies]
 hv-boot-abi = { workspace = true }
@@ -20,10 +21,18 @@ hv-ept = { path = "../hv-ept", default-features = false }
 hv-vtd = { path = "../hv-vtd", default-features = false }
 hv-vmx = { path = "../hv-vmx" }
 hv-types = { workspace = true, default-features = false }
+hv-config-model = { path = "../hv-config-model", default-features = false }
+hv-ipc = { path = "../hv-ipc", default-features = false }
 
 [dev-dependencies]
 hv-ept = { path = "../hv-ept", features = ["std"] }
 hv-vtd = { path = "../hv-vtd", features = ["std"] }
+hv-partition = { path = "../hv-partition", features = ["std"] }
+hv-core = { path = "../hv-core", features = ["std"] }
+hv-config-model = { workspace = true, features = ["std"] }
+hv-boot-abi = { workspace = true }
+hv-guest-abi = { workspace = true }
+hv-ipc = { path = "../hv-ipc", features = ["std"] }
 
 [lints]
 workspace = true

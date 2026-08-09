@@ -61,11 +61,7 @@ fn run_tests() -> Result<(), String> {
 }
 
 fn run_build() -> Result<(), String> {
-    run_cmd(
-        workspace_root(),
-        "cargo",
-        &["build", "--workspace", "--exclude", "hv-loader", "--exclude", "hypster"],
-    )
+    run_cmd(workspace_root(), "cargo", &["build", "--workspace"])
 }
 
 fn validate_config(path: &Path) -> Result<(), String> {

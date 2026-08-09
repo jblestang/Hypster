@@ -12,7 +12,7 @@ use crate::error::EptPlanError;
 use crate::model::{EptPartitionPlan, EptPlan};
 use crate::types::{EptMapping, EptMemoryType, EptPermissions};
 
-/// Builds identity guest RAM EPT mappings from the memory plan.
+/// Builds identity guest RAM and IPC shared-memory EPT mappings from the memory plan.
 pub fn plan_ept(intent: &StaticIntentIR, memory: &MemoryPlan) -> Result<EptPlan, EptPlanError> {
     let mut partitions = Vec::with_capacity(intent.partitions.len());
     for partition in intent.partitions.iter() {
@@ -27,18 +27,56 @@ pub fn plan_ept(intent: &StaticIntentIR, memory: &MemoryPlan) -> Result<EptPlan,
         let Some(backing) = backing else {
             return Err(EptPlanError::MissingGuestRam { vm_id: partition.vm_id.raw() });
         };
-        let mapping = EptMapping {
+        let mut mappings = vec![EptMapping {
             guest_phys: GuestPhysAddr::new(0),
             host_phys: backing.base,
             size: backing.size,
             permissions: EptPermissions::GUEST_RAM,
             memory_type: EptMemoryType::WriteBack,
-        };
-        let mappings = vec![mapping];
+        }];
+
+        append_ipc_mappings(intent, memory, partition.vm_id, &mut mappings)?;
         validate_partition(partition.vm_id, &mappings)?;
         partitions.push(EptPartitionPlan { vm_id: partition.vm_id, mappings });
     }
     Ok(EptPlan { partitions })
+}
+
+fn append_ipc_mappings(
+    intent: &StaticIntentIR,
+    memory: &MemoryPlan,
+    vm_id: VmId,
+    mappings: &mut Vec<EptMapping>,
+) -> Result<(), EptPlanError> {
+    let partition = intent
+        .partitions
+        .iter()
+        .find(|part| part.vm_id == vm_id)
+        .ok_or(EptPlanError::MissingGuestRam { vm_id: vm_id.raw() })?;
+    let mut cursor = partition.memory_bytes;
+    for channel in intent.ipc.iter() {
+        if channel.producer != vm_id && channel.consumer != vm_id {
+            continue;
+        }
+        let host = memory.regions.iter().find(|region| {
+            matches!(&region.purpose, MemoryPurpose::IpcChannel { name } if name == &channel.name)
+        });
+        let Some(host) = host else {
+            return Err(EptPlanError::MissingIpcChannel {
+                vm_id: vm_id.raw(),
+                channel: channel.name.clone(),
+            });
+        };
+        mappings.push(EptMapping {
+            guest_phys: GuestPhysAddr::new(cursor),
+            host_phys: host.base,
+            size: channel.shared_bytes,
+            permissions: EptPermissions::GUEST_RAM,
+            memory_type: EptMemoryType::WriteBack,
+        });
+        cursor = cursor.checked_add(channel.shared_bytes).ok_or(EptPlanError::Overflow)?;
+    }
+    Ok(())
 }
 
 fn validate_partition(vm_id: VmId, mappings: &[EptMapping]) -> Result<(), EptPlanError> {

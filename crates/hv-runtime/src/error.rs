@@ -6,6 +6,7 @@ use hv_acpi::AcpiError;
 use hv_boot_abi::BootLayoutError;
 use hv_cpu::CpuProbeError;
 use hv_ept::EptPlanError;
+use hv_ipc::IpcError;
 use hv_vmx::VmxError;
 use hv_vtd::VtdPlanError;
 use hv_x86::X86Error;
@@ -29,6 +30,10 @@ pub enum RuntimeError {
     Vmx(VmxError),
     /// Table region is inaccessible.
     TableRegionUnavailable,
+    /// Configuration hash mismatch when enforcement is enabled.
+    ConfigHashMismatch,
+    /// IPC ring initialization or validation failed.
+    Ipc(IpcError),
 }
 
 impl RuntimeError {
@@ -44,6 +49,8 @@ impl RuntimeError {
             Self::Vtd(_) => "vtd install error",
             Self::Vmx(_) => "vmx init error",
             Self::TableRegionUnavailable => "table region unavailable",
+            Self::ConfigHashMismatch => "config hash mismatch",
+            Self::Ipc(_) => "ipc error",
         }
     }
 }
@@ -93,5 +100,11 @@ impl From<VtdPlanError> for RuntimeError {
 impl From<VmxError> for RuntimeError {
     fn from(value: VmxError) -> Self {
         Self::Vmx(value)
+    }
+}
+
+impl From<IpcError> for RuntimeError {
+    fn from(value: IpcError) -> Self {
+        Self::Ipc(value)
     }
 }

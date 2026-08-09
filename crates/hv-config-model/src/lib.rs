@@ -29,10 +29,15 @@ extern crate alloc;
 pub mod artifact;
 pub mod error;
 pub mod hash;
+#[cfg(feature = "std")]
 pub mod intent;
+#[cfg(feature = "std")]
 pub mod normalize;
+#[cfg(feature = "std")]
 pub mod pipeline;
+#[cfg(feature = "std")]
 pub mod raw;
+#[cfg(feature = "std")]
 pub mod requirements;
 
 #[cfg(feature = "std")]
@@ -42,8 +47,13 @@ pub mod yaml;
 pub use artifact::GeneratedArtifacts;
 pub use error::ConfigError;
 pub use hash::ConfigHash;
+#[cfg(feature = "std")]
 pub use intent::StaticIntentIR;
+#[cfg(feature = "std")]
 pub use normalize::NormalizedConfig;
+#[cfg(feature = "std")]
 pub use pipeline::{compile_config, validate_config};
+#[cfg(feature = "std")]
 pub use raw::RawConfig;
+#[cfg(feature = "std")]
 pub use requirements::PlatformRequirements;

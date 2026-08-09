@@ -48,6 +48,15 @@ pub struct RuntimeInitReport {
     pub vtd_domains: usize,
 }
 
+/// Summary returned after successful Gate D runtime initialization.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct GateDInitReport {
+    /// Gate C initialization summary.
+    pub gate_c: RuntimeInitReport,
+    /// Partition and IPC preparation summary.
+    pub partitions: crate::partition::PartitionPrepReport,
+}
+
 /// Initializes the hypervisor runtime from loader-provided boot info.
 ///
 /// # Errors
@@ -85,6 +94,25 @@ pub fn initialize(
     phase = advance_phase(phase, BootPhase::Running)?;
 
     Ok(RuntimeInitReport { phase, vmx_enabled, ept_roots, vtd_domains })
+}
+
+/// Initializes Gate C runtime services and prepares Gate D IPC rings.
+///
+/// # Errors
+///
+/// Returns [`RuntimeError`] when validation, table installation, or IPC init fails.
+pub fn initialize_gate_d(
+    boot_info: &BootInfo,
+    plans: &crate::partition::GateDPlans,
+) -> Result<GateDInitReport, RuntimeError> {
+    crate::partition::verify_config_hash(
+        plans.config_hash,
+        boot_info.header.config_hash,
+        plans.require_config_hash,
+    )?;
+    let gate_c = initialize(boot_info, &plans.gate_c)?;
+    let partitions = crate::partition::prepare_ipc_rings(plans, plans.gate_c.ept.partitions.len())?;
+    Ok(GateDInitReport { gate_c, partitions })
 }
 
 fn advance_phase(current: BootPhase, next: BootPhase) -> Result<BootPhase, RuntimeError> {
