@@ -182,7 +182,7 @@ fn enable_vmx(plans: &GateCPlans) -> Result<bool, RuntimeError> {
         unsafe {
             init.try_enable_vmx(plans.vmxon_region_base)?;
         }
-        return Ok(true);
+        Ok(true)
     }
     #[cfg(not(all(feature = "hardware", target_arch = "x86_64")))]
     {

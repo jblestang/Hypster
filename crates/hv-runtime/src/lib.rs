@@ -2,6 +2,7 @@
 
 #![no_std]
 #![warn(missing_docs)]
+#![allow(unsafe_code)] // Identity-mapped firmware tables and loader-reserved regions.
 
 extern crate alloc;
 

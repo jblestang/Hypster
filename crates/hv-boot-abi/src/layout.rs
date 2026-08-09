@@ -1,5 +1,7 @@
 //! Boot info blob layout helpers.
 
+#![allow(unsafe_code)] // Firmware handoff requires raw pointer layout over the boot blob.
+
 use core::mem::{align_of, size_of};
 
 use crate::{BootInfo, BootMemoryDescriptor};

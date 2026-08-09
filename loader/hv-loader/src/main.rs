@@ -3,6 +3,8 @@
 #![no_main]
 #![no_std]
 
+extern crate alloc;
+
 mod boot_info;
 mod handoff;
 
@@ -53,18 +55,21 @@ fn main(_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
     let hypervisor = load_hypervisor_image(boot_services);
 
     let mmap_size = boot_services.memory_map_size();
-    let mut mmap_buf = vec![0u8; mmap_size.map_size + mmap_size.entry_size * 8];
-    let memory_map = boot_services
-        .memory_map(&mut mmap_buf)
-        .map_err(|_| Status::OUT_OF_RESOURCES)?;
+    let mut mmap_buf = alloc::vec![0u8; mmap_size.map_size + mmap_size.entry_size * 8];
+    let memory_map = match boot_services.memory_map(&mut mmap_buf) {
+        Ok(map) => map,
+        Err(_) => return Status::OUT_OF_RESOURCES,
+    };
 
-    let blob = build_boot_info_blob(
+    let blob = match build_boot_info_blob(
         boot_services,
         &memory_map,
         rsdp_address,
         hypervisor,
-    )
-    .map_err(|status| status)?;
+    ) {
+        Ok(blob) => blob,
+        Err(status) => return status,
+    };
 
     let boot_info_ptr = blob.phys_addr as *const hv_boot_abi::BootInfo;
 

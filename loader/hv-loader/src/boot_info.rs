@@ -68,11 +68,9 @@ pub fn build_boot_info_blob(
         .ok_or(uefi::Status::OUT_OF_RESOURCES)?;
 
     let page_count = ((total_bytes + 4095) / 4096) as usize;
-    let phys = boot_services.allocate_pages(
-        AllocateType::AnyPages,
-        MemoryType::LOADER_DATA,
-        page_count,
-    )?;
+    let phys = boot_services
+        .allocate_pages(AllocateType::AnyPages, MemoryType::LOADER_DATA, page_count)
+        .map_err(|err| err.status())?;
 
     // SAFETY: UEFI returned freshly allocated loader data pages.
     unsafe {
@@ -152,8 +150,9 @@ fn try_load_hypster_bin(boot_services: &BootServices) -> Result<HypervisorImage,
         .get_image_file_system(boot_services.image_handle())
         .map_err(|err| err.status())?;
     let mut file_system = FileSystem::new(fs);
+    let path = cstr16!("\\EFI\\hypster\\hypster.bin");
     let data = file_system
-        .read(cstr16!("\\EFI\\hypster\\hypster.bin").as_ref())
+        .read(path)
         .map_err(|_| uefi::Status::NOT_FOUND)?;
 
     if data.is_empty() {
@@ -161,11 +160,9 @@ fn try_load_hypster_bin(boot_services: &BootServices) -> Result<HypervisorImage,
     }
 
     let page_count = ((data.len() + 4095) / 4096) as usize;
-    let load_base = boot_services.allocate_pages(
-        AllocateType::AnyPages,
-        MemoryType::LOADER_DATA,
-        page_count,
-    )?;
+    let load_base = boot_services
+        .allocate_pages(AllocateType::AnyPages, MemoryType::LOADER_DATA, page_count)
+        .map_err(|err| err.status())?;
 
     // SAFETY: writing into UEFI allocated pages.
     unsafe {

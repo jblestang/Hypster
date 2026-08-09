@@ -200,6 +200,8 @@ fn mapping_to_memtype(memtype: EptMemoryType) -> u64 {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::expect_used)]
+
     use super::install_ept_mappings;
     use crate::table::{EPT_HUGE_2M_SIZE, EPT_TABLE_SIZE};
     use crate::types::{EptMapping, EptMemoryType, EptPermissions};

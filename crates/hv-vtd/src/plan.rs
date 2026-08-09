@@ -1,7 +1,6 @@
 //! VT-d domain and DMA mapping planner.
 
 use alloc::collections::BTreeSet;
-use alloc::string::String;
 use alloc::vec::Vec;
 
 use hv_config_model::intent::StaticIntentIR;

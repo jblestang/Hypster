@@ -2,6 +2,10 @@
 
 #![no_std]
 #![warn(missing_docs)]
+#![allow(unsafe_code)] // Raw MSR/CR access and identity-mapped physical reads.
+
+#[cfg(feature = "std")]
+extern crate std;
 
 mod error;
 pub mod cr;

@@ -48,6 +48,20 @@ sufficient for silicon-specific properties.
 | Hypervisor entry skeleton | BUILD (`x86_64-unknown-none`) |
 | VMX/EPT/VT-d hardware programming | QEMU + REAL_HW (Gate C) |
 
+## Gate C matrix
+
+| Requirement | Levels |
+|-------------|--------|
+| x86 CPUID/MSR helpers (`hv-x86`) | UNIT |
+| CPU feature probe (`hv-cpu`) | UNIT |
+| VMX host init (`hv-vmx`) | UNIT + BUILD + QEMU (with `hardware` feature) |
+| EPT page table install | UNIT + Gate C integration tests |
+| VT-d context table install | UNIT + Gate C integration tests |
+| Boot ABI v1.1 memory map layout | UNIT |
+| Loader ExitBootServices handoff | BUILD (`x86_64-unknown-uefi`) |
+| Runtime init pipeline (`hv-runtime`) | UNIT + Gate C integration tests |
+| CPU/DMA isolation at runtime | QEMU + REAL_HW (Gate D guests) |
+
 ## Gates
 
 - **Gate A (before UEFI)** — types, config, requirements, IR, tests
@@ -55,4 +69,4 @@ sufficient for silicon-specific properties.
 - **Gate C (before e1000)** — CPU/DMA isolation, lifecycle
 - **Gate D (before optimization)** — end-to-end datapath, malicious tests
 
-This branch targets Gate B.
+This branch targets Gate C.

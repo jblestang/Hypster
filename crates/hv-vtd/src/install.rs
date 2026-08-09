@@ -150,6 +150,8 @@ pub fn install_vtd_domains(
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::expect_used)]
+
     use super::{install_vtd_domains, VtdHardwareState};
     use crate::model::VtdDomainPlan;
     use crate::table::{CONTEXT_TABLE_SIZE, ROOT_TABLE_SIZE};

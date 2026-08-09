@@ -73,11 +73,7 @@ impl VmxCapabilities {
         cr4_fixed1: u64,
     ) -> Self {
         let revision_id = (basic & 0x7FFF_FFFF) as u32;
-        let region_size = if (basic & (1 << 31)) != 0 {
-            4096
-        } else {
-            4096
-        };
+        let region_size = 4096;
         Self {
             revision_id,
             region_size,

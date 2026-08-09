@@ -5,12 +5,14 @@ partitioned systems.
 
 ## Status
 
-This branch completes **Gate B (before VMX)** on top of Phase 0–3:
+This branch completes **Gate C (before e1000)** on top of Gate B:
 
-- ACPI + ELF parsers, CPU/memory/EPT/VT-d planners
-- `ObservedPlatform` validation and `StaticPlatformIR` resolution
-- UEFI loader skeleton (`hv-loader`) and hypervisor entry (`hypster`)
-- boot phase FSM and Gate B integration tests
+- `hv-x86` / `hv-cpu` — CPUID and MSR helpers, CPU feature probe
+- `hv-vmx` — VMXON region, host init, VMCS layout (hardware via `hardware` feature)
+- EPT/VT-d **install** modules — page table builders from Gate B plans
+- `hv-runtime` — boot-time init pipeline through `BootPhase::Running`
+- UEFI loader **ExitBootServices** handoff to hypervisor entry
+- Boot ABI v1.1 with memory map trailing descriptors
 
 ## Quick start
 
@@ -23,6 +25,8 @@ cargo xtask platform resolve configs/qemu.yaml
 cargo clippy --workspace --exclude hv-loader --exclude hypster --all-targets --all-features -- -D warnings
 cargo build -p hv-loader --target x86_64-unknown-uefi
 cargo build -p hypster --target x86_64-unknown-none
+# Optional: enable real VMXON on bare metal / nested VMX host
+cargo build -p hypster --target x86_64-unknown-none -p hv-runtime --features hardware
 ```
 
 ## Documentation

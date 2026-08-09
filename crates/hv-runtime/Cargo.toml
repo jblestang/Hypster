@@ -21,5 +21,9 @@ hv-vtd = { path = "../hv-vtd", default-features = false }
 hv-vmx = { path = "../hv-vmx" }
 hv-types = { workspace = true, default-features = false }
 
+[dev-dependencies]
+hv-ept = { path = "../hv-ept", features = ["std"] }
+hv-vtd = { path = "../hv-vtd", features = ["std"] }
+
 [lints]
 workspace = true
