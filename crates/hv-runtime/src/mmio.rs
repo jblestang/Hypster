@@ -69,7 +69,10 @@ impl MmioDispatch {
     /// Returns [`E1000Error::OffsetOutOfRange`] when no device covers the address.
     pub fn read32(&self, guest_phys: GuestPhysAddr, offset: u32) -> Result<u32, E1000Error> {
         let device = self.find_device(guest_phys)?;
-        let local = guest_phys.raw().checked_sub(device.guest_base.raw()).ok_or(E1000Error::OffsetOutOfRange)?;
+        let local = guest_phys
+            .raw()
+            .checked_sub(device.guest_base.raw())
+            .ok_or(E1000Error::OffsetOutOfRange)?;
         mmio_read(&device.state, local as u32 + offset)
     }
 
@@ -85,7 +88,10 @@ impl MmioDispatch {
         value: u32,
     ) -> Result<(), E1000Error> {
         let device = self.find_device_mut(guest_phys)?;
-        let local = guest_phys.raw().checked_sub(device.guest_base.raw()).ok_or(E1000Error::OffsetOutOfRange)?;
+        let local = guest_phys
+            .raw()
+            .checked_sub(device.guest_base.raw())
+            .ok_or(E1000Error::OffsetOutOfRange)?;
         mmio_write(&mut device.state, local as u32 + offset, value)
     }
 
@@ -96,7 +102,10 @@ impl MmioDispatch {
             .ok_or(E1000Error::OffsetOutOfRange)
     }
 
-    fn find_device_mut(&mut self, guest_phys: GuestPhysAddr) -> Result<&mut MmioDevice, E1000Error> {
+    fn find_device_mut(
+        &mut self,
+        guest_phys: GuestPhysAddr,
+    ) -> Result<&mut MmioDevice, E1000Error> {
         self.devices
             .iter_mut()
             .find(|device| contains_guest_addr(device, guest_phys.raw()))
@@ -126,9 +135,8 @@ mod tests {
             memory_type: EptMemoryType::Uncacheable,
         }];
         let dispatch = MmioDispatch::from_ept_mappings(mappings);
-        let status = dispatch
-            .read32(GuestPhysAddr::new(0xFEB0_0000), hv_e1000::REG_STATUS)
-            .expect("status");
+        let status =
+            dispatch.read32(GuestPhysAddr::new(0xFEB0_0000), hv_e1000::REG_STATUS).expect("status");
         assert_ne!(status & 0x80, 0);
     }
 }

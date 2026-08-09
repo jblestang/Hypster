@@ -41,7 +41,8 @@ pub fn load_elf_into_guest_ram(
         }
         let seg_end = start.checked_add(mem_size as usize).ok_or(ElfError::Overflow)?;
         guest_ram[start..seg_end].fill(0);
-        guest_ram[start..start + file_size].copy_from_slice(&image[file_offset..file_offset + file_size]);
+        guest_ram[start..start + file_size]
+            .copy_from_slice(&image[file_offset..file_offset + file_size]);
         if end > high_water {
             high_water = end;
         }
@@ -59,8 +60,10 @@ mod tests {
     use super::*;
 
     fn minimal_elf(entry: u64, load_vaddr: u64, payload: &[u8]) -> Vec<u8> {
-        use hv_elf::{ELF64_EHDR_SIZE, ELF64_PHDR_SIZE, EM_X86_64, ELFCLASS64, ELFDATA2LSB, ELF_MAGIC};
         use hv_elf::PT_LOAD;
+        use hv_elf::{
+            ELF64_EHDR_SIZE, ELF64_PHDR_SIZE, ELFCLASS64, ELFDATA2LSB, ELF_MAGIC, EM_X86_64,
+        };
 
         let phoff = ELF64_EHDR_SIZE as u64;
         let file_offset = phoff + ELF64_PHDR_SIZE as u64;

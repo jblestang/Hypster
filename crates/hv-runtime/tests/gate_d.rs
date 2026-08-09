@@ -10,7 +10,7 @@ use hv_guest_abi::layout;
 use hv_guest_abi::GuestBootInfo;
 use hv_ipc::{init_ring, try_pop, try_push, validate_ring, IpcError};
 use hv_partition::{build_guest_boot_info, gate_d_plans_from_resolved};
-use hv_runtime::{initialize_gate_d, GateCPlans, DatapathEngine, MmioDispatch};
+use hv_runtime::{initialize_gate_d, DatapathEngine, GateCPlans, MmioDispatch};
 use hv_types::{HostPhysAddr, VcpuId, VmId};
 
 const IPC_RING_BYTES: usize = 524_328;
@@ -203,7 +203,8 @@ fn gate_d_e2e_datapath_moves_payload_through_engine() {
         .ipc_channels
         .iter()
         .map(|channel| {
-            compute_shared_bytes(channel.slot_count, channel.slot_size).expect("ring bytes") as usize
+            compute_shared_bytes(channel.slot_count, channel.slot_size).expect("ring bytes")
+                as usize
         })
         .sum();
     let mut ipc_backing = vec![0u8; total_backing];
@@ -217,9 +218,7 @@ fn gate_d_e2e_datapath_moves_payload_through_engine() {
 
     let mut engine = DatapathEngine::from_plans(&plans, &mut ipc_backing).expect("engine");
     let mut out = [0u8; 2048];
-    let report = engine
-        .run_e2e_once(b"gate-d-udp-payload", &mut out)
-        .expect("e2e transfer");
+    let report = engine.run_e2e_once(b"gate-d-udp-payload", &mut out).expect("e2e transfer");
     assert_eq!(report.step.in_to_mid_frames, 1);
     assert!(report.outbound_bytes >= b"gate-d-udp-payload".len());
     assert_eq!(&out[..b"gate-d-udp-payload".len()], b"gate-d-udp-payload");
@@ -232,18 +231,11 @@ fn gate_d_mmio_dispatch_covers_e1000_mappings() {
     let compiled = compile_config(raw).expect("compile config");
     let observed = qemu_validation_observed().expect("fixture");
     let platform = resolve_platform(&compiled.intent, &observed).expect("resolve");
-    let in_partition = platform
-        .ept
-        .partitions
-        .iter()
-        .find(|part| part.vm_id.raw() == 0)
-        .expect("in ept");
+    let in_partition =
+        platform.ept.partitions.iter().find(|part| part.vm_id.raw() == 0).expect("in ept");
     let dispatch = MmioDispatch::from_ept_mappings(&in_partition.mappings);
     let status = dispatch
-        .read32(
-            hv_types::GuestPhysAddr::new(0xFEB0_0000),
-            hv_e1000::REG_STATUS,
-        )
+        .read32(hv_types::GuestPhysAddr::new(0xFEB0_0000), hv_e1000::REG_STATUS)
         .expect("status");
     assert_ne!(status & 0x80, 0);
 }
@@ -253,7 +245,10 @@ fn gate_d_elf_loader_places_segments_at_guest_phys_zero() {
     use hv_runtime::load_elf_into_guest_ram;
 
     fn minimal_elf(entry: u64, load_vaddr: u64, payload: &[u8]) -> Vec<u8> {
-        use hv_elf::{ELF64_EHDR_SIZE, ELF64_PHDR_SIZE, EM_X86_64, ELFCLASS64, ELFDATA2LSB, ELF_MAGIC, PT_LOAD};
+        use hv_elf::{
+            ELF64_EHDR_SIZE, ELF64_PHDR_SIZE, ELFCLASS64, ELFDATA2LSB, ELF_MAGIC, EM_X86_64,
+            PT_LOAD,
+        };
 
         let phoff = ELF64_EHDR_SIZE as u64;
         let file_offset = phoff + ELF64_PHDR_SIZE as u64;

@@ -14,21 +14,9 @@ pub fn relay_one_frame(
     mid_to_out: &mut [u8],
     slot: &mut [u8],
 ) -> Result<usize, IpcError> {
-    let len = try_pop(
-        in_to_mid,
-        names::IN_TO_MID,
-        IPC_SLOT_COUNT,
-        IPC_SLOT_SIZE,
-        slot,
-    )?;
+    let len = try_pop(in_to_mid, names::IN_TO_MID, IPC_SLOT_COUNT, IPC_SLOT_SIZE, slot)?;
     let payload_len = len.min(IPC_SLOT_SIZE as usize);
-    try_push(
-        mid_to_out,
-        names::MID_TO_OUT,
-        IPC_SLOT_COUNT,
-        IPC_SLOT_SIZE,
-        &slot[..payload_len],
-    )?;
+    try_push(mid_to_out, names::MID_TO_OUT, IPC_SLOT_COUNT, IPC_SLOT_SIZE, &slot[..payload_len])?;
     Ok(payload_len)
 }
 
@@ -70,8 +58,10 @@ mod tests {
     fn guest_relay_moves_payload_between_rings() {
         let mut in_to_mid = vec![0u8; shared_bytes()];
         let mut mid_to_out = vec![0u8; shared_bytes()];
-        init_ring(&mut in_to_mid, names::IN_TO_MID, IPC_SLOT_COUNT, IPC_SLOT_SIZE).expect("init in");
-        init_ring(&mut mid_to_out, names::MID_TO_OUT, IPC_SLOT_COUNT, IPC_SLOT_SIZE).expect("init out");
+        init_ring(&mut in_to_mid, names::IN_TO_MID, IPC_SLOT_COUNT, IPC_SLOT_SIZE)
+            .expect("init in");
+        init_ring(&mut mid_to_out, names::MID_TO_OUT, IPC_SLOT_COUNT, IPC_SLOT_SIZE)
+            .expect("init out");
         hv_ipc::try_push(
             &mut in_to_mid,
             names::IN_TO_MID,

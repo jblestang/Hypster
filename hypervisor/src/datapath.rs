@@ -17,13 +17,10 @@ static mut IPC_BACKING: [u8; IPC_RING_BYTES * 2] = [0; IPC_RING_BYTES * 2];
 /// # Errors
 ///
 /// Returns [`hv_runtime::RuntimeError`] when backing assignment or ring init fails.
-pub fn prepare_local_ipc_backing(
-    plans: &mut GateDPlans,
-) -> Result<(), hv_runtime::RuntimeError> {
+pub fn prepare_local_ipc_backing(plans: &mut GateDPlans) -> Result<(), hv_runtime::RuntimeError> {
     // SAFETY: called once during single-threaded init before the steady-state loop.
-    let backing = unsafe {
-        core::slice::from_raw_parts_mut(IPC_BACKING.as_mut_ptr(), IPC_BACKING.len())
-    };
+    let backing =
+        unsafe { core::slice::from_raw_parts_mut(IPC_BACKING.as_mut_ptr(), IPC_BACKING.len()) };
     assign_ipc_host_backing(plans, backing)?;
     for channel in &plans.ipc_channels {
         let ptr = channel.host_base.raw() as *mut u8;
@@ -36,9 +33,8 @@ pub fn prepare_local_ipc_backing(
 /// Runs the host-assisted datapath loop after Gate D initialization succeeds.
 pub fn run_steady_state_loop(plans: &GateDPlans, _report: GateDInitReport) -> ! {
     // SAFETY: IPC backing is initialized during init and not mutated concurrently.
-    let backing = unsafe {
-        core::slice::from_raw_parts_mut(IPC_BACKING.as_mut_ptr(), IPC_BACKING.len())
-    };
+    let backing =
+        unsafe { core::slice::from_raw_parts_mut(IPC_BACKING.as_mut_ptr(), IPC_BACKING.len()) };
     let mut engine = match DatapathEngine::from_plans(plans, backing) {
         Ok(engine) => engine,
         Err(_) => halt_forever(),

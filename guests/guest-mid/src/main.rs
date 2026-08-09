@@ -30,10 +30,7 @@ pub extern "C" fn _start() -> ! {
     }
     // SAFETY: hypervisor maps initialized IPC rings at these GPAs for the MID partition.
     unsafe {
-        run_mid_relay_loop(
-            MID_IN_TO_MID_GPA as *mut u8,
-            MID_MID_TO_OUT_GPA as *mut u8,
-        );
+        run_mid_relay_loop(MID_IN_TO_MID_GPA as *mut u8, MID_MID_TO_OUT_GPA as *mut u8);
     }
 }
 

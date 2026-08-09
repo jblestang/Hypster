@@ -55,13 +55,7 @@ impl ChannelBacking<'_> {
                 Err(err) => return Err(err),
             };
             let payload_len = len.min(self.slot_size as usize);
-            try_push(
-                dst.backing,
-                dst.name,
-                dst.slot_count,
-                dst.slot_size,
-                &slot[..payload_len],
-            )?;
+            try_push(dst.backing, dst.name, dst.slot_count, dst.slot_size, &slot[..payload_len])?;
             frames += 1;
             bytes += payload_len as u64;
         }
@@ -74,7 +68,9 @@ impl ChannelBacking<'_> {
 /// # Errors
 ///
 /// Returns [`IpcError`] when ring invariants fail.
-pub fn run_datapath_step(channels: &mut DatapathChannels<'_>) -> Result<DatapathStepReport, IpcError> {
+pub fn run_datapath_step(
+    channels: &mut DatapathChannels<'_>,
+) -> Result<DatapathStepReport, IpcError> {
     let (in_to_mid_frames, in_bytes) = channels.in_to_mid.relay(&mut channels.mid_to_out)?;
     Ok(DatapathStepReport {
         in_to_mid_frames,
@@ -92,13 +88,7 @@ pub fn inject_inbound_payload(
     channel: &mut ChannelBacking<'_>,
     payload: &[u8],
 ) -> Result<(), IpcError> {
-    try_push(
-        channel.backing,
-        channel.name,
-        channel.slot_count,
-        channel.slot_size,
-        payload,
-    )?;
+    try_push(channel.backing, channel.name, channel.slot_count, channel.slot_size, payload)?;
     Ok(())
 }
 
@@ -111,13 +101,7 @@ pub fn drain_outbound_payload(
     channel: &mut ChannelBacking<'_>,
     out: &mut [u8],
 ) -> Result<usize, IpcError> {
-    try_pop(
-        channel.backing,
-        channel.name,
-        channel.slot_count,
-        channel.slot_size,
-        out,
-    )
+    try_pop(channel.backing, channel.name, channel.slot_count, channel.slot_size, out)
 }
 
 /// Builds channel backings from Gate D IPC plans and a contiguous host buffer.

@@ -24,11 +24,7 @@ pub struct DatapathPrepReport {
 /// Validates datapath prerequisites from Gate D plans.
 pub fn prepare_datapath(plans: &GateDPlans) -> Result<DatapathPrepReport, IpcError> {
     let ipc_channels = plans.ipc_channels.len();
-    let slot_size = plans
-        .ipc_channels
-        .first()
-        .map(|channel| channel.slot_size)
-        .unwrap_or(0);
+    let slot_size = plans.ipc_channels.first().map(|channel| channel.slot_size).unwrap_or(0);
     let mmio_devices = plans
         .gate_c
         .ept
@@ -120,7 +116,11 @@ impl<'a> DatapathEngine<'a> {
     /// # Errors
     ///
     /// Returns [`IpcError::QueueEmpty`] when no outbound frame is produced.
-    pub fn run_e2e_once(&mut self, payload: &[u8], out: &mut [u8]) -> Result<E2eTransferReport, IpcError> {
+    pub fn run_e2e_once(
+        &mut self,
+        payload: &[u8],
+        out: &mut [u8],
+    ) -> Result<E2eTransferReport, IpcError> {
         self.inject_inbound(payload);
         let step = self.run_step()?;
         let outbound_bytes = self.drain_outbound(out)?;
@@ -129,9 +129,7 @@ impl<'a> DatapathEngine<'a> {
 
     /// Takes one transmitted frame from the OUT-facing e1000 TX queue.
     pub fn drain_outbound(&mut self, out: &mut [u8]) -> Result<usize, IpcError> {
-        self.out_nic
-            .take_tx_frame(out)
-            .ok_or(IpcError::QueueEmpty)
+        self.out_nic.take_tx_frame(out).ok_or(IpcError::QueueEmpty)
     }
 
     fn bridge_in_nic_to_ipc(&mut self) -> Result<u32, IpcError> {
@@ -144,10 +142,7 @@ impl<'a> DatapathEngine<'a> {
     }
 
     fn bridge_ipc_to_out_nic(&mut self) -> Result<u32, IpcError> {
-        let len = drain_outbound_payload(
-            &mut self.channels.mid_to_out,
-            &mut self.relay_slot,
-        )?;
+        let len = drain_outbound_payload(&mut self.channels.mid_to_out, &mut self.relay_slot)?;
         self.out_nic.enqueue_tx_frame(&self.relay_slot[..len]);
         Ok(1)
     }

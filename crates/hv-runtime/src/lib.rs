@@ -33,4 +33,6 @@ pub use partition::{
     PartitionPrepReport,
 };
 pub use run::{prepare_datapath, DatapathEngine, DatapathPrepReport, E2eTransferReport};
-pub use vmexit::{classify_exit_reason, handle_mmio_exit, reason as vmexit_reason, MmioExitAction, MmioExitInfo};
+pub use vmexit::{
+    classify_exit_reason, handle_mmio_exit, reason as vmexit_reason, MmioExitAction, MmioExitInfo,
+};
