@@ -2,11 +2,11 @@
 
 use hv_ept::EptMemoryType;
 use hv_types::{GuestPhysAddr, HostPhysAddr, VmId};
-use hv_vmx::{
-    build_guest_vmcs_fields, vmclear, vmlaunch, vmptrld, vmread, vmresume, vmwrite, GuestLaunchPlan,
-    VmcsFieldWrite, VmcsRegion, VmxCapabilities,
-};
 use hv_vmx::vmcs::{HOST_CR0, HOST_CR3, HOST_CR4, HOST_RIP, HOST_RSP, VM_EXIT_REASON};
+use hv_vmx::{
+    build_guest_vmcs_fields, vmclear, vmlaunch, vmptrld, vmread, vmresume, vmwrite,
+    GuestLaunchPlan, VmcsFieldWrite, VmcsRegion, VmxCapabilities,
+};
 
 use crate::error::RuntimeError;
 use crate::launch::{plan_partition_launches, DEFAULT_GUEST_BOOT_INFO_GPA};
@@ -40,7 +40,8 @@ pub fn stage_guest_image(
     boot_info: &[u8],
 ) -> Result<GuestPhysAddr, RuntimeError> {
     let ram = guest_ram_slice(plans, vm_id)?;
-    let loaded = load_elf_into_guest_ram(image, ram).map_err(|_| RuntimeError::TableRegionUnavailable)?;
+    let loaded =
+        load_elf_into_guest_ram(image, ram).map_err(|_| RuntimeError::TableRegionUnavailable)?;
     let boot_gpa = DEFAULT_GUEST_BOOT_INFO_GPA as usize;
     if boot_info.len() + boot_gpa > ram.len() {
         return Err(RuntimeError::TableRegionUnavailable);
@@ -96,13 +97,7 @@ pub fn launch_plan_for_vm(plans: &GateDPlans, vm_id: VmId) -> Option<GuestLaunch
 pub fn capture_host_launch_context(host_rip: u64) -> HostLaunchContext {
     let (host_rsp, host_cr3) = read_host_rsp_cr3();
     let host_cr4 = hv_x86::read_cr4().unwrap_or(0x2000);
-    HostLaunchContext {
-        host_rip,
-        host_rsp,
-        host_cr0: 0x8001_0033,
-        host_cr3,
-        host_cr4,
-    }
+    HostLaunchContext { host_rip, host_rsp, host_cr0: 0x8001_0033, host_cr3, host_cr4 }
 }
 
 fn read_host_rsp_cr3() -> (u64, u64) {
@@ -132,7 +127,9 @@ fn guest_ram_slice(plans: &GateDPlans, vm_id: VmId) -> Result<&mut [u8], Runtime
     let mapping = partition
         .mappings
         .iter()
-        .find(|mapping| mapping.memory_type == EptMemoryType::WriteBack && mapping.guest_phys.raw() == 0)
+        .find(|mapping| {
+            mapping.memory_type == EptMemoryType::WriteBack && mapping.guest_phys.raw() == 0
+        })
         .ok_or(RuntimeError::TableRegionUnavailable)?;
     let ptr = mapping.host_phys.raw() as *mut u8;
     let len = mapping.size as usize;

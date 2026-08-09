@@ -6,10 +6,10 @@ use hv_boot_abi::BootInfo;
 use hv_core::boot::BootPhase;
 
 use crate::datapath;
-use crate::plans;
-use crate::serial;
 #[cfg(feature = "hardware")]
 use crate::launch;
+use crate::plans;
+use crate::serial;
 
 /// Hypervisor entry called by the loader with a pointer to boot info.
 ///

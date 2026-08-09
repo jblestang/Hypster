@@ -32,11 +32,12 @@ pub unsafe fn try_launch_in_guest(plans: &GateDPlans) -> Result<(), hv_runtime::
     }
     let vm_id = VmId::new(0);
     let boot_info = minimal_boot_info_bytes();
-    let mut launch = launch_plan_for_vm(plans, vm_id).ok_or(hv_runtime::RuntimeError::TableRegionUnavailable)?;
+    let mut launch =
+        launch_plan_for_vm(plans, vm_id).ok_or(hv_runtime::RuntimeError::TableRegionUnavailable)?;
     launch.guest_entry = stage_guest_image(plans, vm_id, GUEST_IN_IMAGE, &boot_info)?;
 
     let caps = VmxCapabilities::from_hardware().unwrap_or(VmxCapabilities::from_assumed_qemu());
-    let host = capture_host_launch_context(vmexit_entry as u64);
+    let host = capture_host_launch_context(vmexit_entry as usize as u64);
     vmlaunch_guest(&launch, host, caps)
 }
 

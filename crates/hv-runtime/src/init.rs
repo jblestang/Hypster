@@ -4,7 +4,9 @@ use hv_acpi::parse_rsdp;
 use hv_acpi::rsdp::RSDP_V2_LEN;
 use hv_boot_abi::{layout, BootInfo};
 use hv_core::boot::BootPhase;
-use hv_cpu::{probe_cpu_optional, CpuProbeError};
+use hv_cpu::probe_cpu_optional;
+#[cfg(all(feature = "hardware", target_arch = "x86_64"))]
+use hv_cpu::CpuProbeError;
 use hv_ept::install_ept_mappings;
 use hv_types::{HostPhysAddr, VmId};
 #[cfg(all(feature = "hardware", target_arch = "x86_64"))]
@@ -153,7 +155,9 @@ fn verify_rsdp(boot_info: &BootInfo) -> Result<(), RuntimeError> {
     Ok(())
 }
 
-fn compute_ept_root_hp_as(plans: &GateCPlans) -> Result<alloc::vec::Vec<(VmId, HostPhysAddr)>, RuntimeError> {
+fn compute_ept_root_hp_as(
+    plans: &GateCPlans,
+) -> Result<alloc::vec::Vec<(VmId, HostPhysAddr)>, RuntimeError> {
     let mut scratch = [0u8; 65536];
     let base = plans.ept_table_base.raw();
     let mut offset = 0usize;
@@ -274,6 +278,8 @@ fn enable_vmx(plans: &GateCPlans) -> Result<bool, RuntimeError> {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::expect_used)]
+
     extern crate alloc;
 
     use super::*;

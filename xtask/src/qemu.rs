@@ -53,14 +53,9 @@ pub fn run(workspace: &Path, config: &Path, headless: bool) -> Result<(), String
     run_cmd(&qemu, &args)
 }
 
+#[derive(Default)]
 struct LaunchBootOptions {
     nested_vmx: bool,
-}
-
-impl Default for LaunchBootOptions {
-    fn default() -> Self {
-        Self { nested_vmx: false }
-    }
 }
 
 /// Prepares artifacts and boots QEMU when available, waiting for the running marker.
@@ -149,9 +144,24 @@ fn build_artifacts(workspace: &Path) -> Result<(), String> {
             &["--features", "bare-metal-bin"],
             Some("-C relocation-model=static"),
         ),
-        ("guest-in", "x86_64-unknown-none", &["--features", "bare-metal-bin"], Some("-C relocation-model=static")),
-        ("guest-mid", "x86_64-unknown-none", &["--features", "bare-metal-bin"], Some("-C relocation-model=static")),
-        ("guest-out", "x86_64-unknown-none", &["--features", "bare-metal-bin"], Some("-C relocation-model=static")),
+        (
+            "guest-in",
+            "x86_64-unknown-none",
+            &["--features", "bare-metal-bin"],
+            Some("-C relocation-model=static"),
+        ),
+        (
+            "guest-mid",
+            "x86_64-unknown-none",
+            &["--features", "bare-metal-bin"],
+            Some("-C relocation-model=static"),
+        ),
+        (
+            "guest-out",
+            "x86_64-unknown-none",
+            &["--features", "bare-metal-bin"],
+            Some("-C relocation-model=static"),
+        ),
     ];
     for (package, target, features, rustflags) in builds {
         let mut args = vec!["build", "-p", package, "--target", target, "--release"];
@@ -284,7 +294,7 @@ fn kvm_usable() -> bool {
     fs::OpenOptions::new().read(true).open("/dev/kvm").is_ok()
 }
 
-fn enable_nested_vmx_args(args: &mut Vec<String>) {
+fn enable_nested_vmx_args(args: &mut [String]) {
     prefer_kvm_accel(args);
     if kvm_usable() {
         replace_cpu_arg(args, "host");
