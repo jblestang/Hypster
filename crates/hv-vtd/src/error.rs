@@ -1,8 +1,8 @@
-//! VT-d planner errors.
+//! VT-d planner and installation errors.
 
 use core::fmt;
 
-/// Errors produced while building VT-d plans.
+/// Errors produced while building or installing VT-d plans.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum VtdPlanError {
     /// Expected PCI device not discovered on platform.
@@ -17,6 +17,12 @@ pub enum VtdPlanError {
     },
     /// Address overflow.
     Overflow,
+    /// Install buffer is too small for VT-d tables.
+    BufferTooSmall,
+    /// Domain list is empty.
+    EmptyDomains,
+    /// PCI BDF could not be parsed during install.
+    InvalidPciBdf,
 }
 
 impl fmt::Display for VtdPlanError {
@@ -27,6 +33,9 @@ impl fmt::Display for VtdPlanError {
                 write!(f, "PCI device `{bdf}` assigned to multiple domains")
             }
             Self::Overflow => f.write_str("VT-d planner overflow"),
+            Self::BufferTooSmall => f.write_str("VT-d install buffer too small"),
+            Self::EmptyDomains => f.write_str("VT-d install requires at least one domain"),
+            Self::InvalidPciBdf => f.write_str("invalid PCI BDF during VT-d install"),
         }
     }
 }

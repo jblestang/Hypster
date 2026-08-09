@@ -203,7 +203,6 @@ name = "hv-cpu"
 version = "0.1.0"
 dependencies = [
  "hv-types",
- "hv-x86",
 ]
 
 [[package]]
@@ -256,10 +255,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "hv-runtime"
+version = "0.1.0"
+dependencies = [
+ "hv-acpi",
+ "hv-boot-abi",
+ "hv-core",
+ "hv-cpu",
+ "hv-ept",
+ "hv-memory",
+ "hv-types",
+ "hv-vmx",
+ "hv-vtd",
+ "hv-x86",
+]
+
+[[package]]
 name = "hv-types"
 version = "0.1.0"
 dependencies = [
  "proptest",
+]
+
+[[package]]
+name = "hv-vmx"
+version = "0.1.0"
+dependencies = [
+ "hv-types",
+ "hv-x86",
 ]
 
 [[package]]
@@ -274,6 +297,9 @@ dependencies = [
 [[package]]
 name = "hv-x86"
 version = "0.1.0"
+dependencies = [
+ "hv-types",
+]
 
 [[package]]
 name = "hypster"
@@ -281,7 +307,10 @@ version = "0.1.0"
 dependencies = [
  "hv-boot-abi",
  "hv-core",
+ "hv-ept",
+ "hv-runtime",
  "hv-types",
+ "hv-vtd",
 ]
 
 [[package]]

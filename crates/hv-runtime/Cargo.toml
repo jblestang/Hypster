@@ -1,0 +1,28 @@
+[package]
+name = "hv-runtime"
+description = "Gate C hypervisor runtime initialization"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[features]
+default = []
+hardware = ["hv-vmx/hardware"]
+
+[dependencies]
+hv-boot-abi = { workspace = true }
+hv-core = { path = "../hv-core", default-features = false }
+hv-cpu = { path = "../hv-cpu" }
+hv-x86 = { path = "../hv-x86" }
+hv-acpi = { workspace = true }
+hv-ept = { path = "../hv-ept" }
+hv-vtd = { path = "../hv-vtd" }
+hv-vmx = { path = "../hv-vmx" }
+hv-types = { workspace = true, default-features = false }
+hv-acpi = { workspace = true, default-features = false }
+hv-ept = { path = "../hv-ept", default-features = false }
+hv-vtd = { path = "../hv-vtd", default-features = false }
+
+[lints]
+workspace = true

@@ -13,6 +13,8 @@ members = [
     "crates/hv-memory",
     "crates/hv-ept",
     "crates/hv-vtd",
+    "crates/hv-vmx",
+    "crates/hv-runtime",
     "crates/hv-core",
     "loader/hv-loader",
     "hypervisor",
@@ -30,6 +32,8 @@ rust-version = "1.85"
 [workspace.dependencies]
 hv-x86 = { path = "crates/hv-x86" }
 hv-cpu = { path = "crates/hv-cpu" }
+hv-vmx = { path = "crates/hv-vmx" }
+hv-runtime = { path = "crates/hv-runtime" }
 hv-types = { path = "crates/hv-types" }
 hv-config-model = { path = "crates/hv-config-model" }
 hv-boot-abi = { path = "crates/hv-boot-abi" }
