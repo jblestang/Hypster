@@ -7,6 +7,11 @@ extern crate alloc;
 
 mod datapath;
 pub mod entry;
+#[cfg(feature = "hardware")]
+mod launch;
 mod plans;
+mod serial;
+#[cfg(feature = "hardware")]
+mod vmexit_host;
 
 pub use entry::hypster_entry;

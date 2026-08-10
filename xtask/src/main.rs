@@ -1,5 +1,7 @@
 //! Hypster development task runner.
 
+mod qemu;
+
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
@@ -37,6 +39,24 @@ fn run(args: Vec<String>) -> Result<(), String> {
             platform_resolve(Path::new(&args[2]))
         }
         Some("datapath") if args.len() == 2 && args[1] == "smoke" => datapath_smoke(),
+        Some("datapath") if args.len() == 2 && args[1] == "e2e" => datapath_e2e(),
+        Some("qemu") => match args.get(1).map(String::as_str) {
+            Some("prepare") if args.len() == 2 => qemu_prepare(None),
+            Some("prepare") if args.len() == 3 => qemu_prepare(Some(Path::new(&args[2]))),
+            Some("run") if args.len() == 2 => qemu_run(None, false),
+            Some("run") if args.len() == 3 && args[2] == "--headless" => qemu_run(None, true),
+            Some("run") if args.len() == 4 && args[2] == "--headless" => {
+                qemu_run(Some(Path::new(&args[3])), true)
+            }
+            Some("run") if args.len() == 3 => qemu_run(Some(Path::new(&args[2])), false),
+            Some("smoke") if args.len() == 2 => qemu_smoke(None),
+            Some("smoke") if args.len() == 3 => qemu_smoke(Some(Path::new(&args[2]))),
+            Some("launch") if args.len() == 3 && args[2] == "smoke" => qemu_launch_smoke(None),
+            Some("launch") if args.len() == 4 && args[2] == "smoke" => {
+                qemu_launch_smoke(Some(Path::new(&args[3])))
+            }
+            _ => Err(usage()),
+        },
         _ => Err(usage()),
     }
 }
@@ -78,6 +98,42 @@ fn datapath_smoke() -> Result<(), String> {
             "--nocapture",
         ],
     )
+}
+
+fn datapath_e2e() -> Result<(), String> {
+    qemu::datapath_e2e(&workspace_root(), &qemu::default_config_path(&workspace_root()))
+}
+
+fn qemu_launch_smoke(config: Option<&Path>) -> Result<(), String> {
+    let root = workspace_root();
+    let default = qemu::default_config_path(&root);
+    let path = config.unwrap_or(&default);
+    qemu::launch_smoke(&root, path)
+}
+
+fn qemu_prepare(config: Option<&Path>) -> Result<(), String> {
+    let root = workspace_root();
+    let default = qemu::default_config_path(&root);
+    let path = config.unwrap_or(&default);
+    let report = qemu::prepare(&root, path)?;
+    println!("prepared ESP at {}", report.esp_root.display());
+    println!("loader={}", report.loader_efi.display());
+    println!("hypervisor={}", report.hypervisor_bin.display());
+    Ok(())
+}
+
+fn qemu_run(config: Option<&Path>, headless: bool) -> Result<(), String> {
+    let root = workspace_root();
+    let default = qemu::default_config_path(&root);
+    let path = config.unwrap_or(&default);
+    qemu::run(&root, path, headless)
+}
+
+fn qemu_smoke(config: Option<&Path>) -> Result<(), String> {
+    let root = workspace_root();
+    let default = qemu::default_config_path(&root);
+    let path = config.unwrap_or(&default);
+    qemu::smoke(&root, path)
 }
 
 fn validate_config(path: &Path) -> Result<(), String> {
@@ -154,5 +210,5 @@ fn workspace_root() -> PathBuf {
 }
 
 fn usage() -> String {
-    "usage: cargo xtask <test|build|config validate <path>|config generate <path> [--output dir]|platform resolve <path>|datapath smoke>".into()
+    "usage: cargo xtask <test|build|config validate <path>|config generate <path> [--output dir]|platform resolve <path>|datapath smoke|datapath e2e|qemu prepare [path]|qemu run [path] [--headless]|qemu smoke [path]|qemu launch smoke [path]>".into()
 }

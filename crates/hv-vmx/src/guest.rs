@@ -13,6 +13,8 @@ use crate::vmcs::{
 pub const PROC_BASED2_ENABLE_EPT: u64 = 1 << 1;
 /// Processor-based control: use secondary controls.
 pub const PROC_BASED_ACTIVATE_SECONDARY: u64 = 1 << 31;
+/// Processor-based control: exit on guest HLT.
+pub const PROC_BASED_HLT_EXITING: u64 = 1 << 7;
 
 /// One partition guest launch descriptor.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -55,7 +57,7 @@ pub fn build_guest_vmcs_fields(
         return Err(VmxError::MisalignedEptRoot);
     }
 
-    let proc_based = PROC_BASED_ACTIVATE_SECONDARY;
+    let proc_based = PROC_BASED_ACTIVATE_SECONDARY | PROC_BASED_HLT_EXITING;
     let proc_based2 = PROC_BASED2_ENABLE_EPT;
     let ept_ptr = plan.ept_root_hpa.raw() | 0x6;
 

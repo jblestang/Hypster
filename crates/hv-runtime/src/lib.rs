@@ -8,6 +8,7 @@ extern crate alloc;
 
 mod datapath;
 mod error;
+mod execute;
 mod init;
 mod launch;
 mod load;
@@ -17,10 +18,16 @@ mod run;
 mod vmexit;
 
 pub use datapath::{
-    channel_backings_from_plans, drain_outbound_payload, inject_inbound_payload, run_datapath_step,
-    ChannelBacking, DatapathChannels, DatapathStepReport,
+    channel_backings_from_plans, drain_outbound_payload, inject_inbound_payload,
+    peek_in_launch_payload, peek_mid_launch_relay, run_datapath_step, verify_mid_launch_relay,
+    verify_mid_to_out_drained, ChannelBacking, DatapathChannels, DatapathStepReport,
 };
 pub use error::RuntimeError;
+pub use execute::{
+    advance_guest_rip, capture_host_launch_context, dispatch_in_guest_vmexit, handle_ept_mmio_exit,
+    launch_plan_for_vm, read_vmexit_guest_phys, read_vmexit_instruction_len, read_vmexit_reason,
+    resume_guest, stage_guest_image, vmlaunch_guest, HostLaunchContext,
+};
 pub use init::{initialize, initialize_gate_d, GateCPlans, GateDInitReport, RuntimeInitReport};
 pub use launch::{
     plan_partition_launches, prepare_partition_launches, LaunchPrepReport,

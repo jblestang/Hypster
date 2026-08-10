@@ -2,9 +2,10 @@
 
 use alloc::vec;
 
-use hv_ipc::{try_pop, try_push, IpcError};
+use hv_ipc::{peek_front_payload, ring_has_pending_frame, try_pop, try_push, IpcError};
 
-use crate::partition::IpcChannelPlan;
+use crate::error::RuntimeError;
+use crate::partition::{GateDPlans, IpcChannelPlan};
 
 /// One step of host-assisted datapath relay.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -102,6 +103,121 @@ pub fn drain_outbound_payload(
     out: &mut [u8],
 ) -> Result<usize, IpcError> {
     try_pop(channel.backing, channel.name, channel.slot_count, channel.slot_size, out)
+}
+
+/// Peeks at the next `in_to_mid` frame without consuming it.
+///
+/// # Errors
+///
+/// Returns [`RuntimeError::Ipc`] when the ring is empty or the payload prefix mismatches.
+pub fn peek_in_launch_payload(plans: &GateDPlans, expected: &[u8]) -> Result<usize, RuntimeError> {
+    let channel = in_to_mid_channel(plans)?;
+    let mut slot = vec![0u8; channel.slot_size as usize];
+    let len = peek_front_payload(
+        channel.backing,
+        channel.name,
+        channel.slot_count,
+        channel.slot_size,
+        &mut slot,
+    )
+    .map_err(RuntimeError::Ipc)?;
+    if len < expected.len() || &slot[..expected.len()] != expected {
+        return Err(RuntimeError::Ipc(IpcError::ParameterMismatch));
+    }
+    Ok(len)
+}
+
+/// Verifies the MID guest relay left `expected` in `mid_to_out`, draining one frame.
+///
+/// # Errors
+///
+/// Returns [`RuntimeError::Ipc`] when the ring is empty or the payload prefix mismatches.
+pub fn verify_mid_launch_relay(plans: &GateDPlans, expected: &[u8]) -> Result<usize, RuntimeError> {
+    let mut channel = mid_to_out_channel(plans)?;
+    let mut slot = vec![0u8; channel.slot_size as usize];
+    let len = drain_outbound_payload(&mut channel, &mut slot)?;
+    if len < expected.len() || &slot[..expected.len()] != expected {
+        return Err(RuntimeError::Ipc(IpcError::ParameterMismatch));
+    }
+    Ok(len)
+}
+
+/// Peeks at the next `mid_to_out` frame without consuming it.
+///
+/// # Errors
+///
+/// Returns [`RuntimeError::Ipc`] when the ring is empty or the payload prefix mismatches.
+pub fn peek_mid_launch_relay(plans: &GateDPlans, expected: &[u8]) -> Result<usize, RuntimeError> {
+    let channel = mid_to_out_channel(plans)?;
+    let mut slot = vec![0u8; channel.slot_size as usize];
+    let len = peek_front_payload(
+        channel.backing,
+        channel.name,
+        channel.slot_count,
+        channel.slot_size,
+        &mut slot,
+    )
+    .map_err(RuntimeError::Ipc)?;
+    if len < expected.len() || &slot[..expected.len()] != expected {
+        return Err(RuntimeError::Ipc(IpcError::ParameterMismatch));
+    }
+    Ok(len)
+}
+
+/// Verifies `mid_to_out` has no pending frames after the OUT guest drains.
+///
+/// # Errors
+///
+/// Returns [`RuntimeError::Ipc`] when a frame remains or ring validation fails.
+pub fn verify_mid_to_out_drained(plans: &GateDPlans) -> Result<(), RuntimeError> {
+    let channel = mid_to_out_channel(plans)?;
+    let pending = ring_has_pending_frame(
+        channel.backing,
+        channel.name,
+        channel.slot_count,
+        channel.slot_size,
+    )
+    .map_err(RuntimeError::Ipc)?;
+    if pending {
+        return Err(RuntimeError::Ipc(IpcError::ParameterMismatch));
+    }
+    Ok(())
+}
+
+fn in_to_mid_channel(plans: &GateDPlans) -> Result<ChannelBacking<'_>, RuntimeError> {
+    let channel = plans
+        .ipc_channels
+        .iter()
+        .find(|ch| ch.name == "in_to_mid")
+        .ok_or(RuntimeError::TableRegionUnavailable)?;
+    let size = channel.shared_bytes as usize;
+    let ptr = channel.host_base.raw() as *mut u8;
+    // SAFETY: Gate D init assigned host backing for IPC rings before launch.
+    let backing = unsafe { core::slice::from_raw_parts_mut(ptr, size) };
+    Ok(ChannelBacking {
+        name: "in_to_mid",
+        backing,
+        slot_count: channel.slot_count,
+        slot_size: channel.slot_size,
+    })
+}
+
+fn mid_to_out_channel(plans: &GateDPlans) -> Result<ChannelBacking<'_>, RuntimeError> {
+    let channel = plans
+        .ipc_channels
+        .iter()
+        .find(|ch| ch.name == "mid_to_out")
+        .ok_or(RuntimeError::TableRegionUnavailable)?;
+    let size = channel.shared_bytes as usize;
+    let ptr = channel.host_base.raw() as *mut u8;
+    // SAFETY: Gate D init assigned host backing for IPC rings before launch.
+    let backing = unsafe { core::slice::from_raw_parts_mut(ptr, size) };
+    Ok(ChannelBacking {
+        name: "mid_to_out",
+        backing,
+        slot_count: channel.slot_count,
+        slot_size: channel.slot_size,
+    })
 }
 
 /// Builds channel backings from Gate D IPC plans and a contiguous host buffer.

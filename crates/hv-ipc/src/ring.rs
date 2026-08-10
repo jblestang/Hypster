@@ -193,6 +193,48 @@ pub fn try_pop(
     Ok(len)
 }
 
+/// Reads the next consumer slot without advancing `tail`.
+///
+/// # Errors
+///
+/// Returns [`IpcError::QueueEmpty`] when no slot is available.
+pub fn peek_front_payload(
+    backing: &[u8],
+    name: &str,
+    slot_count: u32,
+    slot_size: u32,
+    out: &mut [u8],
+) -> Result<usize, IpcError> {
+    validate_ring(backing, name, slot_count, slot_size)?;
+    let (head, tail, slot_size, _slot_count) = {
+        let header = header_ref(backing)?;
+        (header.head, header.tail, header.slot_size, header.slot_count)
+    };
+    if head == tail {
+        return Err(IpcError::QueueEmpty);
+    }
+    let slot_offset = slot_byte_offset(tail, slot_size)?;
+    let slot = slot_ref(backing, slot_offset, slot_size as usize)?;
+    let len = core::cmp::min(out.len(), slot.len());
+    out[..len].copy_from_slice(&slot[..len]);
+    Ok(len)
+}
+
+/// Returns true when the ring has at least one unconsumed slot.
+///
+/// # Errors
+///
+/// Returns [`IpcError`] when header validation fails.
+pub fn ring_has_pending_frame(
+    backing: &[u8],
+    name: &str,
+    slot_count: u32,
+    slot_size: u32,
+) -> Result<bool, IpcError> {
+    let header = validate_ring(backing, name, slot_count, slot_size)?;
+    Ok(header.head != header.tail)
+}
+
 fn header_ref(backing: &[u8]) -> Result<&IpcRingHeader, IpcError> {
     if backing.len() < IPC_RING_HEADER_BYTES {
         return Err(IpcError::BufferTooSmall);
@@ -254,6 +296,20 @@ mod tests {
     fn shared_bytes_matches_config_intent() {
         let bytes = compute_shared_bytes(256, 2048).expect("shared bytes");
         assert_eq!(bytes, IPC_RING_HEADER_BYTES as u64 + 256 * 2048);
+    }
+
+    #[test]
+    fn peek_front_payload_does_not_advance_tail() {
+        let mut backing = vec![0u8; compute_shared_bytes(4, 16).expect("bytes") as usize];
+        init_ring(&mut backing, "mid_to_out", 4, 16).expect("init");
+        try_push(&mut backing, "mid_to_out", 4, 16, b"peek-me").expect("push");
+        let mut out = [0u8; 16];
+        let len = peek_front_payload(&backing, "mid_to_out", 4, 16, &mut out).expect("peek");
+        assert_eq!(len, 16);
+        assert_eq!(&out[..7], b"peek-me");
+        let popped = try_pop(&mut backing, "mid_to_out", 4, 16, &mut out).expect("pop");
+        assert_eq!(popped, 16);
+        assert_eq!(&out[..7], b"peek-me");
     }
 
     #[test]

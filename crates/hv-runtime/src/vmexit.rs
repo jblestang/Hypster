@@ -90,7 +90,7 @@ mod tests {
     fn mmio_exit_read_returns_link_up_status() {
         let mappings = &[EptMapping {
             guest_phys: GuestPhysAddr::new(0xFEB0_0000),
-            host_phys: HostPhysAddr::new(0x2300_0000),
+            host_phys: HostPhysAddr::new(0x1_1720_0000),
             size: 128 * 1024,
             permissions: EptPermissions::MMIO,
             memory_type: EptMemoryType::Uncacheable,

@@ -32,3 +32,7 @@ jobs:
         run: cargo xtask config validate configs/qemu.yaml
       - name: generate config
         run: cargo xtask config generate configs/qemu.yaml
+      - name: qemu prepare
+        run: cargo xtask qemu prepare configs/qemu.yaml
+      - name: qemu launch smoke
+        run: cargo xtask qemu launch smoke configs/qemu.yaml

@@ -20,16 +20,20 @@ required-features = ["bare-metal-bin"]
 [features]
 default = []
 bare-metal-bin = []
+hardware = ["hv-runtime/hardware", "dep:hv-vmx"]
 
 [dependencies]
 hv-boot-abi = { workspace = true }
+hv-guest-abi = { workspace = true }
 hv-core = { path = "../crates/hv-core", default-features = false }
 hv-runtime = { path = "../crates/hv-runtime" }
 hv-types = { workspace = true, default-features = false }
+hv-x86 = { workspace = true }
 hv-ept = { path = "../crates/hv-ept", default-features = false }
 hv-vtd = { path = "../crates/hv-vtd", default-features = false }
 hv-config-model = { path = "../crates/hv-config-model", default-features = false }
 hv-ipc = { path = "../crates/hv-ipc", default-features = false }
+hv-vmx = { workspace = true, optional = true }
 
 [build-dependencies]
 hv-config-model = { path = "../crates/hv-config-model", features = ["std"] }
@@ -38,6 +42,7 @@ hv-partition = { path = "../crates/hv-partition", features = ["std"] }
 hv-runtime = { path = "../crates/hv-runtime" }
 hv-ept = { path = "../crates/hv-ept", features = ["std"] }
 hv-vtd = { path = "../crates/hv-vtd", features = ["std"] }
+hv-types = { workspace = true }
 
 [lints]
 workspace = true

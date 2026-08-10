@@ -1,6 +1,6 @@
 //! Gate D guest partition launch planning.
 
-use hv_types::{GuestPhysAddr, HostPhysAddr};
+use hv_types::{GuestPhysAddr, HostPhysAddr, VmId};
 use hv_vmx::{build_guest_vmcs_fields, GuestLaunchPlan};
 
 use crate::error::RuntimeError;
@@ -13,18 +13,17 @@ pub const DEFAULT_GUEST_STACK: u64 = 0x8000;
 /// Gate D MVP guest boot info GPA.
 pub const DEFAULT_GUEST_BOOT_INFO_GPA: u64 = 0x9000;
 
-const VMCS_REGION_BASE: u64 = 0x2400_0000;
+const VMCS_REGION_BASE: u64 = 0x1_1800_0000;
 const VMCS_REGION_SIZE: u64 = 4096;
 
-/// Summary of guest launch preparation.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct LaunchPrepReport {
-    /// Number of partitions with valid launch plans.
-    pub planned_launches: usize,
-    /// Number of e1000 MMIO devices across all partitions.
-    pub mmio_devices: usize,
-    /// Number of VMCS field sets generated.
-    pub vmcs_field_sets: usize,
+fn ept_root_for_vm(plans: &GateDPlans, vm_id: VmId) -> HostPhysAddr {
+    plans
+        .gate_c
+        .ept_root_hp_as
+        .iter()
+        .find(|(id, _)| *id == vm_id)
+        .map(|(_, root)| *root)
+        .unwrap_or(plans.gate_c.ept_table_base)
 }
 
 /// Builds launch plans for all partitions described in Gate D plans.
@@ -39,11 +38,22 @@ pub fn plan_partition_launches(plans: &GateDPlans) -> alloc::vec::Vec<GuestLaunc
             vmcs_hpa,
             guest_entry: GuestPhysAddr::new(DEFAULT_GUEST_ENTRY),
             guest_stack: GuestPhysAddr::new(DEFAULT_GUEST_STACK),
-            ept_root_hpa: plans.gate_c.ept_table_base,
+            ept_root_hpa: ept_root_for_vm(plans, partition.vm_id),
             guest_boot_info_gpa: GuestPhysAddr::new(DEFAULT_GUEST_BOOT_INFO_GPA),
         });
     }
     out
+}
+
+/// Summary of guest launch preparation.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct LaunchPrepReport {
+    /// Number of partitions with valid launch plans.
+    pub planned_launches: usize,
+    /// Number of e1000 MMIO devices across all partitions.
+    pub mmio_devices: usize,
+    /// Number of VMCS field sets generated.
+    pub vmcs_field_sets: usize,
 }
 
 /// Validates launch plans and builds VMCS field sets without executing VMLAUNCH.
@@ -102,7 +112,7 @@ mod tests {
                             },
                             EptMapping {
                                 guest_phys: GuestPhysAddr::new(0xFEB0_0000),
-                                host_phys: HostPhysAddr::new(0x2300_0000),
+                                host_phys: HostPhysAddr::new(0x1_1720_0000),
                                 size: 128 * 1024,
                                 permissions: EptPermissions::MMIO,
                                 memory_type: EptMemoryType::Uncacheable,
@@ -111,9 +121,10 @@ mod tests {
                     }],
                 },
                 vtd: VtdPlan { domains: alloc::vec::Vec::new() },
-                ept_table_base: HostPhysAddr::new(0x2000_0000),
-                vtd_table_base: HostPhysAddr::new(0x2100_0000),
-                vmxon_region_base: HostPhysAddr::new(0x2200_0000),
+                ept_table_base: HostPhysAddr::new(0x1_1510_0000),
+                vtd_table_base: HostPhysAddr::new(0x1_1610_0000),
+                vmxon_region_base: HostPhysAddr::new(0x1_1710_0000),
+                ept_root_hp_as: alloc::vec![(VmId::new(0), HostPhysAddr::new(0x1_1510_1000))],
             },
             ipc_channels: alloc::vec::Vec::new(),
             config_hash: hv_config_model::hash::ConfigHash([0; 32]),

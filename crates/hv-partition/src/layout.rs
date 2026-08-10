@@ -8,7 +8,7 @@ pub const MMIO_GUEST_STRIDE: u64 = 0x10_0000;
 pub const MMIO_REGION_SIZE: u64 = 128 * 1024;
 
 /// Host physical base for emulated device MMIO backing.
-pub const MMIO_HOST_BASE: u64 = 0x2300_0000;
+pub const MMIO_HOST_BASE: u64 = 0x1_1720_0000;
 /// Host stride between partition device MMIO backing regions.
 pub const MMIO_HOST_STRIDE: u64 = 0x10_0000;
 
@@ -25,7 +25,7 @@ pub fn mmio_host_phys(vm_id: u32, device_index: usize) -> u64 {
 }
 
 /// Gate D MVP VMCS region base (4 KiB per partition).
-pub const VMCS_REGION_BASE: u64 = 0x2400_0000;
+pub const VMCS_REGION_BASE: u64 = 0x1_1800_0000;
 /// Size of one VMCS region.
 pub const VMCS_REGION_SIZE: u64 = 4096;
 

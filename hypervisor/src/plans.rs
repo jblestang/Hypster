@@ -15,6 +15,6 @@ pub fn run_gate_d_init(
 ) -> Result<(GateDPlans, GateDInitReport), RuntimeError> {
     let mut plans = embedded_gate_d_plans();
     crate::datapath::prepare_local_ipc_backing(&mut plans)?;
-    let report = hv_runtime::initialize_gate_d(boot_info, &plans)?;
+    let report = hv_runtime::initialize_gate_d(boot_info, &mut plans)?;
     Ok((plans, report))
 }

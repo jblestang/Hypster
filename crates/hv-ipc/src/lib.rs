@@ -21,6 +21,7 @@ mod ring;
 
 pub use error::IpcError;
 pub use ring::{
-    compute_shared_bytes, init_ring, ipc_name_hash, try_pop, try_push, validate_ring,
-    IpcRingHeader, IPC_RING_HEADER_BYTES, IPC_RING_MAGIC, ROLE_CONSUMER, ROLE_PRODUCER,
+    compute_shared_bytes, init_ring, ipc_name_hash, peek_front_payload, ring_has_pending_frame,
+    try_pop, try_push, validate_ring, IpcRingHeader, IPC_RING_HEADER_BYTES, IPC_RING_MAGIC,
+    ROLE_CONSUMER, ROLE_PRODUCER,
 };

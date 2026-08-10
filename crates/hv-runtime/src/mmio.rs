@@ -129,7 +129,7 @@ mod tests {
     fn dispatch_reads_status_from_mmio_mapping() {
         let mappings = &[EptMapping {
             guest_phys: GuestPhysAddr::new(0xFEB0_0000),
-            host_phys: HostPhysAddr::new(0x2300_0000),
+            host_phys: HostPhysAddr::new(0x1_1720_0000),
             size: 128 * 1024,
             permissions: EptPermissions::MMIO,
             memory_type: EptMemoryType::Uncacheable,

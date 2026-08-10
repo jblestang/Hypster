@@ -58,7 +58,7 @@ fn raw_probe() -> Option<CpuFeatures> {
         let vmx = (leaf1.ecx & (1 << 5)) != 0;
         let nx_leaf1 = (leaf1.edx & (1 << 20)) != 0;
 
-        let max_ext = leaf0.eax;
+        let max_ext = cpuid(0x8000_0000).map(|leaf| leaf.eax).unwrap_or(0);
         let (nx, ept) = if max_ext >= 0x8000_0001 {
             let leaf_ext = cpuid(0x8000_0001)?;
             let nx = nx_leaf1 || (leaf_ext.edx & (1 << 20)) != 0;
