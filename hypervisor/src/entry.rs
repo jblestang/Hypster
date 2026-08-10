@@ -34,7 +34,7 @@ pub unsafe extern "C" fn hypster_entry(boot_info: *const BootInfo) -> ! {
             #[cfg(feature = "hardware")]
             if report.gate_c.vmx_enabled {
                 // SAFETY: Gate C init enabled VMX; `plans` outlives launch or datapath handoff.
-                let launched = unsafe { launch::try_launch_mid_guest(&plans, report) };
+                let launched = unsafe { launch::try_launch_guest_chain(&plans, report) };
                 if launched {
                     core::hint::unreachable_unchecked();
                 }

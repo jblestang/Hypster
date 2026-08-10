@@ -6,7 +6,8 @@ use hv_ipc::{try_pop, try_push, IpcError};
 
 use crate::boot::{boot_info_ptr, ipc_region_base};
 use crate::topology::{
-    names, IPC_SHARED_BYTES, IPC_SLOT_COUNT, IPC_SLOT_SIZE, MID_IN_TO_MID_GPA, MID_MID_TO_OUT_GPA,
+    names, IN_IN_TO_MID_GPA, IPC_SHARED_BYTES, IPC_SLOT_COUNT, IPC_SLOT_SIZE, MID_IN_TO_MID_GPA,
+    MID_MID_TO_OUT_GPA,
 };
 
 /// Relays at most one frame from `in_to_mid` into `mid_to_out`.
@@ -23,6 +24,21 @@ pub fn relay_one_frame(
     let payload_len = len.min(IPC_SLOT_SIZE as usize);
     try_push(mid_to_out, names::MID_TO_OUT, IPC_SLOT_COUNT, IPC_SLOT_SIZE, &slot[..payload_len])?;
     Ok(payload_len)
+}
+
+/// Pushes one payload into boot-info `in_to_mid`, then halts the vCPU.
+///
+/// # Safety
+///
+/// Hypervisor must have mapped boot info and initialized IPC rings before guest entry.
+pub unsafe fn push_once_then_halt(payload: &[u8]) -> ! {
+    let info = &*boot_info_ptr();
+    let in_to_mid_gpa = ipc_region_base(info, names::IN_TO_MID).unwrap_or(IN_IN_TO_MID_GPA);
+    let slice = core::slice::from_raw_parts_mut(in_to_mid_gpa as *mut u8, shared_bytes());
+    if try_push(slice, names::IN_TO_MID, IPC_SLOT_COUNT, IPC_SLOT_SIZE, payload).is_ok() {
+        halt_forever();
+    }
+    spin_forever();
 }
 
 /// Relays one frame using boot-info IPC regions, then halts the vCPU.

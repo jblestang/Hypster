@@ -3,10 +3,10 @@
 #![allow(static_mut_refs)]
 
 use hv_runtime::{
-    capture_host_launch_context, dispatch_in_guest_vmexit, inject_inbound_payload,
-    launch_plan_for_vm, peek_mid_launch_relay, resume_guest, stage_guest_image,
-    verify_mid_to_out_drained, vmlaunch_guest, ChannelBacking, GateDInitReport, GateDPlans,
-    MmioDispatch, RuntimeError,
+    capture_host_launch_context, dispatch_in_guest_vmexit, launch_plan_for_vm,
+    peek_in_launch_payload, peek_mid_launch_relay, resume_guest, stage_guest_image,
+    verify_mid_to_out_drained, vmlaunch_guest, GateDInitReport, GateDPlans, MmioDispatch,
+    RuntimeError,
 };
 use hv_types::VmId;
 use hv_vmx::VmxCapabilities;
@@ -15,20 +15,27 @@ use crate::datapath;
 use crate::serial;
 
 mod embedded {
+    include!(concat!(env!("OUT_DIR"), "/guest_in_boot_info.rs"));
+    include!(concat!(env!("OUT_DIR"), "/guest_in_image.rs"));
     include!(concat!(env!("OUT_DIR"), "/guest_mid_boot_info.rs"));
     include!(concat!(env!("OUT_DIR"), "/guest_mid_image.rs"));
     include!(concat!(env!("OUT_DIR"), "/guest_out_boot_info.rs"));
     include!(concat!(env!("OUT_DIR"), "/guest_out_image.rs"));
 }
 
-use embedded::{GUEST_MID_BOOT_INFO, GUEST_MID_IMAGE, GUEST_OUT_BOOT_INFO, GUEST_OUT_IMAGE};
+use embedded::{
+    GUEST_IN_BOOT_INFO, GUEST_IN_IMAGE, GUEST_MID_BOOT_INFO, GUEST_MID_IMAGE, GUEST_OUT_BOOT_INFO,
+    GUEST_OUT_IMAGE,
+};
 
+const IN_VM_ID: VmId = VmId::new(0);
 const MID_VM_ID: VmId = VmId::new(1);
 const OUT_VM_ID: VmId = VmId::new(2);
-const MID_LAUNCH_PAYLOAD: &[u8] = b"vmx-mid-relay";
+const LAUNCH_PAYLOAD: &[u8] = b"vmx-mid-relay";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum ActiveGuest {
+    In,
     Mid,
     Out,
 }
@@ -40,32 +47,24 @@ struct LaunchStash {
 
 static mut LAUNCH_STASH: Option<LaunchStash> = None;
 static mut GUEST_MMIO: Option<MmioDispatch> = None;
-static mut ACTIVE_GUEST: ActiveGuest = ActiveGuest::Mid;
+static mut ACTIVE_GUEST: ActiveGuest = ActiveGuest::In;
 
-/// Stages the MID guest, injects one IPC frame, and attempts VMLAUNCH when VMX is available.
+/// Runs the IN → MID → OUT guest launch chain under VMX when available.
 ///
-/// On success the MID guest relays into `mid_to_out`, then the OUT guest drains and halts
-/// before the steady-state datapath loop begins.
-///
-/// Returns `true` when the guest launched and the VM-exit path entered the datapath loop.
+/// Returns `true` when the chain launched and the VM-exit path entered the datapath loop.
 /// Returns `false` when staging or launch preparation fails.
 ///
 /// # Safety
 ///
 /// Caller must have completed Gate D init with VMX enabled. `plans` must remain valid until
 /// this function returns or hands off to the datapath loop.
-pub unsafe fn try_launch_mid_guest(plans: &GateDPlans, report: GateDInitReport) -> bool {
-    if GUEST_MID_IMAGE.is_empty() || GUEST_MID_BOOT_INFO.is_empty() {
-        return false;
-    }
-    if GUEST_OUT_IMAGE.is_empty() || GUEST_OUT_BOOT_INFO.is_empty() {
+pub unsafe fn try_launch_guest_chain(plans: &GateDPlans, report: GateDInitReport) -> bool {
+    if guest_images_missing() {
         return false;
     }
 
-    ACTIVE_GUEST = ActiveGuest::Mid;
-    launch_guest(plans, report, MID_VM_ID, GUEST_MID_IMAGE, GUEST_MID_BOOT_INFO, || {
-        inject_mid_launch_frame(plans)
-    })
+    ACTIVE_GUEST = ActiveGuest::In;
+    launch_guest(plans, report, IN_VM_ID, GUEST_IN_IMAGE, GUEST_IN_BOOT_INFO, || Ok(()))
 }
 
 extern "C" {
@@ -84,6 +83,7 @@ extern "C" fn vmexit_dispatch() -> ! {
 
         match unsafe { dispatch_in_guest_vmexit(dispatch) } {
             Ok(true) => match unsafe { ACTIVE_GUEST } {
+                ActiveGuest::In => handle_in_guest_halt(),
                 ActiveGuest::Mid => handle_mid_guest_halt(),
                 ActiveGuest::Out => handle_out_guest_halt(),
             },
@@ -105,6 +105,19 @@ extern "C" fn vmexit_dispatch() -> ! {
                 }
                 halt_forever();
             }
+        }
+    }
+}
+
+fn handle_in_guest_halt() -> ! {
+    match peek_in_guest_payload() {
+        Ok(()) => {
+            serial::write_str("hypster: guest in ok\n");
+            launch_mid_guest_from_stash();
+        }
+        Err(()) => {
+            serial::write_str("hypster: guest in push fail\n");
+            halt_forever();
         }
     }
 }
@@ -135,16 +148,39 @@ fn handle_out_guest_halt() -> ! {
     }
 }
 
-fn launch_out_guest_from_stash() -> ! {
-    // SAFETY: stash is set before VMLAUNCH and `plans` outlives this VM-exit handler.
-    let stash = unsafe { LAUNCH_STASH.as_ref() };
-    let Some(stash) = stash else {
-        serial::write_str("hypster: launch stash missing\n");
-        halt_forever();
-    };
-    // SAFETY: OUT launch reuses the same plans pointer stashed for MID.
+fn launch_mid_guest_from_stash() -> ! {
+    let stash = stash_ref_or_halt();
     let launched = unsafe {
-        launch_out_guest(&*stash.plans, stash.report, GUEST_OUT_IMAGE, GUEST_OUT_BOOT_INFO)
+        launch_follow_on_guest(
+            &*stash.plans,
+            stash.report,
+            ActiveGuest::Mid,
+            MID_VM_ID,
+            GUEST_MID_IMAGE,
+            GUEST_MID_BOOT_INFO,
+        )
+    };
+    if launched {
+        // SAFETY: successful VMLAUNCH does not return to this path.
+        unsafe {
+            core::hint::unreachable_unchecked();
+        }
+    }
+    serial::write_str("hypster: guest mid launch fail\n");
+    halt_forever();
+}
+
+fn launch_out_guest_from_stash() -> ! {
+    let stash = stash_ref_or_halt();
+    let launched = unsafe {
+        launch_follow_on_guest(
+            &*stash.plans,
+            stash.report,
+            ActiveGuest::Out,
+            OUT_VM_ID,
+            GUEST_OUT_IMAGE,
+            GUEST_OUT_BOOT_INFO,
+        )
     };
     if launched {
         // SAFETY: successful VMLAUNCH does not return to this path.
@@ -156,14 +192,16 @@ fn launch_out_guest_from_stash() -> ! {
     halt_forever();
 }
 
-unsafe fn launch_out_guest(
+unsafe fn launch_follow_on_guest(
     plans: &GateDPlans,
     report: GateDInitReport,
+    guest: ActiveGuest,
+    vm_id: VmId,
     image: &[u8],
     boot_info: &[u8],
 ) -> bool {
-    ACTIVE_GUEST = ActiveGuest::Out;
-    launch_guest(plans, report, OUT_VM_ID, image, boot_info, || Ok(()))
+    ACTIVE_GUEST = guest;
+    launch_guest(plans, report, vm_id, image, boot_info, || Ok(()))
 }
 
 unsafe fn launch_guest(
@@ -206,7 +244,6 @@ unsafe fn launch_guest(
 }
 
 fn run_datapath_from_stash() -> ! {
-    // SAFETY: stash is set before VMLAUNCH and `plans` outlives this init path.
     let stash = unsafe { LAUNCH_STASH.take() };
     let Some(stash) = stash else {
         serial::write_str("hypster: launch stash missing\n");
@@ -218,40 +255,37 @@ fn run_datapath_from_stash() -> ! {
     }
 }
 
-fn peek_mid_guest_relay() -> Result<(), ()> {
+fn stash_ref_or_halt() -> &'static LaunchStash {
+    // SAFETY: stash is set before VMLAUNCH and `plans` outlives this VM-exit handler.
     let stash = unsafe { LAUNCH_STASH.as_ref() };
-    let Some(stash) = stash else {
-        return Err(());
-    };
-    peek_mid_launch_relay(unsafe { &*stash.plans }, MID_LAUNCH_PAYLOAD).map(|_| ()).map_err(|_| ())
+    stash.unwrap_or_else(|| {
+        serial::write_str("hypster: launch stash missing\n");
+        halt_forever();
+    })
+}
+
+fn peek_in_guest_payload() -> Result<(), ()> {
+    let stash = stash_ref_or_halt();
+    peek_in_launch_payload(unsafe { &*stash.plans }, LAUNCH_PAYLOAD).map(|_| ()).map_err(|_| ())
+}
+
+fn peek_mid_guest_relay() -> Result<(), ()> {
+    let stash = stash_ref_or_halt();
+    peek_mid_launch_relay(unsafe { &*stash.plans }, LAUNCH_PAYLOAD).map(|_| ()).map_err(|_| ())
 }
 
 fn verify_out_guest_drain() -> Result<(), ()> {
-    let stash = unsafe { LAUNCH_STASH.as_ref() };
-    let Some(stash) = stash else {
-        return Err(());
-    };
+    let stash = stash_ref_or_halt();
     verify_mid_to_out_drained(unsafe { &*stash.plans }).map_err(|_| ())
 }
 
-fn inject_mid_launch_frame(plans: &GateDPlans) -> Result<(), RuntimeError> {
-    let channel = plans
-        .ipc_channels
-        .iter()
-        .find(|ch| ch.name == "in_to_mid")
-        .ok_or(RuntimeError::TableRegionUnavailable)?;
-    let size = channel.shared_bytes as usize;
-    let ptr = channel.host_base.raw() as *mut u8;
-    // SAFETY: Gate D init assigned host backing for IPC rings before launch.
-    let backing = unsafe { core::slice::from_raw_parts_mut(ptr, size) };
-    let mut channel = ChannelBacking {
-        name: "in_to_mid",
-        backing,
-        slot_count: channel.slot_count,
-        slot_size: channel.slot_size,
-    };
-    inject_inbound_payload(&mut channel, MID_LAUNCH_PAYLOAD)?;
-    Ok(())
+fn guest_images_missing() -> bool {
+    GUEST_IN_IMAGE.is_empty()
+        || GUEST_IN_BOOT_INFO.is_empty()
+        || GUEST_MID_IMAGE.is_empty()
+        || GUEST_MID_BOOT_INFO.is_empty()
+        || GUEST_OUT_IMAGE.is_empty()
+        || GUEST_OUT_BOOT_INFO.is_empty()
 }
 
 fn write_hex_u32(value: u32) {
