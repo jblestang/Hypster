@@ -76,16 +76,18 @@ sufficient for silicon-specific properties.
 | Guest MID IPC relay loop | BUILD + UNIT (`guest-common`) |
 | End-to-end datapath (e1000, UDP) | UNIT + host-assisted integration (`cargo xtask datapath smoke`) + QEMU boot self-test (`cargo xtask datapath e2e`) |
 | Guest VMCS launch planning | UNIT + Gate D integration tests |
+| Guest VMLAUNCH chain (IN→MID→OUT) | QEMU (`cargo xtask qemu launch smoke`) |
 | e1000 MMIO decode skeleton | UNIT + malicious tests |
 | EPT MMIO device mappings | UNIT + Gate D integration tests |
-| CPU/DMA isolation with guests | QEMU + REAL_HW (future) |
+| CPU/DMA isolation with guests | QEMU (partial via launch smoke) + REAL_HW (future) |
 | QEMU/OVMF boot packaging | BUILD (`cargo xtask qemu prepare`) + QEMU (`cargo xtask qemu smoke`) |
 
 ## Gates
 
-- **Gate A (before UEFI)** — types, config, requirements, IR, tests
-- **Gate B (before VMX)** — loader, ACPI, observed platform, planners
-- **Gate C (before e1000)** — CPU/DMA isolation, lifecycle
-- **Gate D (before optimization)** — end-to-end datapath, malicious tests
+- **Gate A (before UEFI)** — types, config, requirements, IR, tests — closed
+- **Gate B (before VMX)** — loader, ACPI, observed platform, planners — closed
+- **Gate C (before e1000)** — CPU/DMA isolation, lifecycle — closed
+- **Gate D (before optimization)** — end-to-end datapath, malicious tests, guest VMLAUNCH — **closed**
+- **Next (optimization)** — UDP throughput `PERFORMANCE`, then REAL_HW isolation
 
-This branch targets Gate D.
+Gate D is closed on `main`.

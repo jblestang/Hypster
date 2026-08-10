@@ -69,9 +69,9 @@ properties are fail-closed.
 - Phase 0–3: workspace, config pipeline, ABIs
 - Gate B: ACPI/ELF parsers, planners, `StaticPlatformIR`, boot FSM skeleton
 - Gate C: VMX/EPT/VT-d install, loader handoff, `hv-runtime` init
-- Gate D: IPC rings, guest boot info, EPT IPC/MMIO mappings, embedded platform plans, host-assisted e2e datapath engine, guest MID relay, VMCS launch planning, e1000 MMIO + packet queues, VM-exit MMIO skeleton
+- Gate D (closed): IPC rings, guest boot info, EPT IPC/MMIO mappings, embedded platform plans, host-assisted e2e datapath, guest IN→MID→OUT IPC chain, VMCS programming + VMLAUNCH under nested KVM, e1000 MMIO + packet queues, VM-exit MMIO skeleton
 
-Guest VMLAUNCH under QEMU and UDP benchmark throughput measurement continue as follow-up work. QEMU boot packaging and host-assisted datapath verification are available via `cargo xtask qemu prepare`, `cargo xtask qemu smoke`, and `cargo xtask datapath e2e`.
+Gate D QEMU validation: `cargo xtask qemu prepare`, `qemu smoke`, `datapath e2e`, and `qemu launch smoke` (marker `hypster: guest out ok`). UDP throughput measurement remains follow-up under the optimization / `PERFORMANCE` gate.
 
 ## Safety ordering
 
