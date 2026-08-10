@@ -18,8 +18,9 @@ mod run;
 mod vmexit;
 
 pub use datapath::{
-    channel_backings_from_plans, drain_outbound_payload, inject_inbound_payload, run_datapath_step,
-    verify_mid_launch_relay, ChannelBacking, DatapathChannels, DatapathStepReport,
+    channel_backings_from_plans, drain_outbound_payload, inject_inbound_payload,
+    peek_mid_launch_relay, run_datapath_step, verify_mid_launch_relay, verify_mid_to_out_drained,
+    ChannelBacking, DatapathChannels, DatapathStepReport,
 };
 pub use error::RuntimeError;
 pub use execute::{

@@ -10,7 +10,7 @@ mod topology;
 
 pub use boot::{boot_info_ptr, ipc_region_base, GUEST_BOOT_INFO_GPA};
 pub use hv_guest_abi::{GuestBootInfo, GUEST_BOOT_INFO_MAGIC};
-pub use ipc::{relay_once_then_halt, relay_one_frame, run_mid_relay_loop};
+pub use ipc::{drain_once_then_halt, relay_once_then_halt, relay_one_frame, run_mid_relay_loop};
 pub use topology::{names, IPC_SLOT_COUNT, IPC_SLOT_SIZE, MID_IN_TO_MID_GPA, MID_MID_TO_OUT_GPA};
 
 /// Returns true when `info` has a compatible guest boot info header.

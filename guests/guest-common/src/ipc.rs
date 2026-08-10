@@ -43,6 +43,22 @@ pub unsafe fn relay_once_then_halt() -> ! {
     spin_forever();
 }
 
+/// Drains one frame from boot-info `mid_to_out`, then halts the vCPU.
+///
+/// # Safety
+///
+/// Hypervisor must have mapped boot info and initialized IPC rings before guest entry.
+pub unsafe fn drain_once_then_halt() -> ! {
+    let info = &*boot_info_ptr();
+    let mid_to_out_gpa = ipc_region_base(info, names::MID_TO_OUT).unwrap_or(MID_MID_TO_OUT_GPA);
+    let slice = core::slice::from_raw_parts_mut(mid_to_out_gpa as *mut u8, shared_bytes());
+    let mut slot = [0u8; IPC_SLOT_SIZE as usize];
+    if try_pop(slice, names::MID_TO_OUT, IPC_SLOT_COUNT, IPC_SLOT_SIZE, &mut slot).is_ok() {
+        halt_forever();
+    }
+    spin_forever();
+}
+
 /// Runs the MID partition relay loop against identity-mapped IPC backing.
 ///
 /// # Safety

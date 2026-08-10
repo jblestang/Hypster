@@ -2,7 +2,7 @@
 
 use alloc::vec;
 
-use hv_ipc::{try_pop, try_push, IpcError};
+use hv_ipc::{peek_front_payload, ring_has_pending_frame, try_pop, try_push, IpcError};
 
 use crate::error::RuntimeError;
 use crate::partition::{GateDPlans, IpcChannelPlan};
@@ -118,6 +118,48 @@ pub fn verify_mid_launch_relay(plans: &GateDPlans, expected: &[u8]) -> Result<us
         return Err(RuntimeError::Ipc(IpcError::ParameterMismatch));
     }
     Ok(len)
+}
+
+/// Peeks at the next `mid_to_out` frame without consuming it.
+///
+/// # Errors
+///
+/// Returns [`RuntimeError::Ipc`] when the ring is empty or the payload prefix mismatches.
+pub fn peek_mid_launch_relay(plans: &GateDPlans, expected: &[u8]) -> Result<usize, RuntimeError> {
+    let channel = mid_to_out_channel(plans)?;
+    let mut slot = vec![0u8; channel.slot_size as usize];
+    let len = peek_front_payload(
+        channel.backing,
+        channel.name,
+        channel.slot_count,
+        channel.slot_size,
+        &mut slot,
+    )
+    .map_err(RuntimeError::Ipc)?;
+    if len < expected.len() || &slot[..expected.len()] != expected {
+        return Err(RuntimeError::Ipc(IpcError::ParameterMismatch));
+    }
+    Ok(len)
+}
+
+/// Verifies `mid_to_out` has no pending frames after the OUT guest drains.
+///
+/// # Errors
+///
+/// Returns [`RuntimeError::Ipc`] when a frame remains or ring validation fails.
+pub fn verify_mid_to_out_drained(plans: &GateDPlans) -> Result<(), RuntimeError> {
+    let channel = mid_to_out_channel(plans)?;
+    let pending = ring_has_pending_frame(
+        channel.backing,
+        channel.name,
+        channel.slot_count,
+        channel.slot_size,
+    )
+    .map_err(RuntimeError::Ipc)?;
+    if pending {
+        return Err(RuntimeError::Ipc(IpcError::ParameterMismatch));
+    }
+    Ok(())
 }
 
 fn mid_to_out_channel(plans: &GateDPlans) -> Result<ChannelBacking<'_>, RuntimeError> {

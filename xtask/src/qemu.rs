@@ -101,7 +101,7 @@ pub fn launch_smoke(workspace: &Path, config: &Path) -> Result<(), String> {
         workspace,
         config,
         Duration::from_secs(90),
-        "hypster: guest mid ok",
+        "hypster: guest out ok",
         LaunchBootOptions { nested_vmx: true },
     )
 }

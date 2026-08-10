@@ -4,8 +4,9 @@
 
 use hv_runtime::{
     capture_host_launch_context, dispatch_in_guest_vmexit, inject_inbound_payload,
-    launch_plan_for_vm, resume_guest, stage_guest_image, verify_mid_launch_relay, vmlaunch_guest,
-    ChannelBacking, GateDInitReport, GateDPlans, MmioDispatch, RuntimeError,
+    launch_plan_for_vm, peek_mid_launch_relay, resume_guest, stage_guest_image,
+    verify_mid_to_out_drained, vmlaunch_guest, ChannelBacking, GateDInitReport, GateDPlans,
+    MmioDispatch, RuntimeError,
 };
 use hv_types::VmId;
 use hv_vmx::VmxCapabilities;
@@ -16,12 +17,21 @@ use crate::serial;
 mod embedded {
     include!(concat!(env!("OUT_DIR"), "/guest_mid_boot_info.rs"));
     include!(concat!(env!("OUT_DIR"), "/guest_mid_image.rs"));
+    include!(concat!(env!("OUT_DIR"), "/guest_out_boot_info.rs"));
+    include!(concat!(env!("OUT_DIR"), "/guest_out_image.rs"));
 }
 
-use embedded::{GUEST_MID_BOOT_INFO, GUEST_MID_IMAGE};
+use embedded::{GUEST_MID_BOOT_INFO, GUEST_MID_IMAGE, GUEST_OUT_BOOT_INFO, GUEST_OUT_IMAGE};
 
 const MID_VM_ID: VmId = VmId::new(1);
+const OUT_VM_ID: VmId = VmId::new(2);
 const MID_LAUNCH_PAYLOAD: &[u8] = b"vmx-mid-relay";
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ActiveGuest {
+    Mid,
+    Out,
+}
 
 struct LaunchStash {
     plans: *const GateDPlans,
@@ -29,9 +39,13 @@ struct LaunchStash {
 }
 
 static mut LAUNCH_STASH: Option<LaunchStash> = None;
-static mut MID_MMIO: Option<MmioDispatch> = None;
+static mut GUEST_MMIO: Option<MmioDispatch> = None;
+static mut ACTIVE_GUEST: ActiveGuest = ActiveGuest::Mid;
 
 /// Stages the MID guest, injects one IPC frame, and attempts VMLAUNCH when VMX is available.
+///
+/// On success the MID guest relays into `mid_to_out`, then the OUT guest drains and halts
+/// before the steady-state datapath loop begins.
 ///
 /// Returns `true` when the guest launched and the VM-exit path entered the datapath loop.
 /// Returns `false` when staging or launch preparation fails.
@@ -44,37 +58,14 @@ pub unsafe fn try_launch_mid_guest(plans: &GateDPlans, report: GateDInitReport) 
     if GUEST_MID_IMAGE.is_empty() || GUEST_MID_BOOT_INFO.is_empty() {
         return false;
     }
-
-    let mut launch = match launch_plan_for_vm(plans, MID_VM_ID) {
-        Some(plan) => plan,
-        None => return false,
-    };
-    launch.guest_entry =
-        match stage_guest_image(plans, MID_VM_ID, GUEST_MID_IMAGE, GUEST_MID_BOOT_INFO) {
-            Ok(entry) => entry,
-            Err(_) => return false,
-        };
-
-    if inject_mid_launch_frame(plans).is_err() {
+    if GUEST_OUT_IMAGE.is_empty() || GUEST_OUT_BOOT_INFO.is_empty() {
         return false;
     }
 
-    let partition = match plans.gate_c.ept.partitions.iter().find(|part| part.vm_id == MID_VM_ID) {
-        Some(partition) => partition,
-        None => return false,
-    };
-    MID_MMIO = Some(MmioDispatch::from_ept_mappings(&partition.mappings));
-    LAUNCH_STASH = Some(LaunchStash { plans, report });
-
-    let caps = VmxCapabilities::from_hardware().unwrap_or(VmxCapabilities::from_assumed_qemu());
-    let host = capture_host_launch_context(vmexit_entry as usize as u64);
-    if vmlaunch_guest(&launch, host, caps).is_err() {
-        LAUNCH_STASH = None;
-        MID_MMIO = None;
-        return false;
-    }
-
-    core::hint::unreachable_unchecked();
+    ACTIVE_GUEST = ActiveGuest::Mid;
+    launch_guest(plans, report, MID_VM_ID, GUEST_MID_IMAGE, GUEST_MID_BOOT_INFO, || {
+        inject_mid_launch_frame(plans)
+    })
 }
 
 extern "C" {
@@ -85,22 +76,16 @@ extern "C" {
 #[no_mangle]
 extern "C" fn vmexit_dispatch() -> ! {
     loop {
-        let dispatch = unsafe { MID_MMIO.as_mut() };
+        let dispatch = unsafe { GUEST_MMIO.as_mut() };
         let Some(dispatch) = dispatch else {
             serial::write_str("hypster: vmexit no mmio\n");
             halt_forever();
         };
 
         match unsafe { dispatch_in_guest_vmexit(dispatch) } {
-            Ok(true) => match verify_mid_guest_relay() {
-                Ok(()) => {
-                    serial::write_str("hypster: guest mid ok\n");
-                    run_datapath_from_stash();
-                }
-                Err(()) => {
-                    serial::write_str("hypster: guest mid relay fail\n");
-                    halt_forever();
-                }
+            Ok(true) => match unsafe { ACTIVE_GUEST } {
+                ActiveGuest::Mid => handle_mid_guest_halt(),
+                ActiveGuest::Out => handle_out_guest_halt(),
             },
             Ok(false) => match unsafe { resume_guest() } {
                 Ok(()) => {}
@@ -124,6 +109,102 @@ extern "C" fn vmexit_dispatch() -> ! {
     }
 }
 
+fn handle_mid_guest_halt() -> ! {
+    match peek_mid_guest_relay() {
+        Ok(()) => {
+            serial::write_str("hypster: guest mid ok\n");
+            launch_out_guest_from_stash();
+        }
+        Err(()) => {
+            serial::write_str("hypster: guest mid relay fail\n");
+            halt_forever();
+        }
+    }
+}
+
+fn handle_out_guest_halt() -> ! {
+    match verify_out_guest_drain() {
+        Ok(()) => {
+            serial::write_str("hypster: guest out ok\n");
+            run_datapath_from_stash();
+        }
+        Err(()) => {
+            serial::write_str("hypster: guest out drain fail\n");
+            halt_forever();
+        }
+    }
+}
+
+fn launch_out_guest_from_stash() -> ! {
+    // SAFETY: stash is set before VMLAUNCH and `plans` outlives this VM-exit handler.
+    let stash = unsafe { LAUNCH_STASH.as_ref() };
+    let Some(stash) = stash else {
+        serial::write_str("hypster: launch stash missing\n");
+        halt_forever();
+    };
+    // SAFETY: OUT launch reuses the same plans pointer stashed for MID.
+    let launched = unsafe {
+        launch_out_guest(&*stash.plans, stash.report, GUEST_OUT_IMAGE, GUEST_OUT_BOOT_INFO)
+    };
+    if launched {
+        // SAFETY: successful VMLAUNCH does not return to this path.
+        unsafe {
+            core::hint::unreachable_unchecked();
+        }
+    }
+    serial::write_str("hypster: guest out launch fail\n");
+    halt_forever();
+}
+
+unsafe fn launch_out_guest(
+    plans: &GateDPlans,
+    report: GateDInitReport,
+    image: &[u8],
+    boot_info: &[u8],
+) -> bool {
+    ACTIVE_GUEST = ActiveGuest::Out;
+    launch_guest(plans, report, OUT_VM_ID, image, boot_info, || Ok(()))
+}
+
+unsafe fn launch_guest(
+    plans: &GateDPlans,
+    report: GateDInitReport,
+    vm_id: VmId,
+    image: &[u8],
+    boot_info: &[u8],
+    prepare: impl FnOnce() -> Result<(), RuntimeError>,
+) -> bool {
+    let mut launch = match launch_plan_for_vm(plans, vm_id) {
+        Some(plan) => plan,
+        None => return false,
+    };
+    launch.guest_entry = match stage_guest_image(plans, vm_id, image, boot_info) {
+        Ok(entry) => entry,
+        Err(_) => return false,
+    };
+
+    if prepare().is_err() {
+        return false;
+    }
+
+    let partition = match plans.gate_c.ept.partitions.iter().find(|part| part.vm_id == vm_id) {
+        Some(partition) => partition,
+        None => return false,
+    };
+    GUEST_MMIO = Some(MmioDispatch::from_ept_mappings(&partition.mappings));
+    LAUNCH_STASH = Some(LaunchStash { plans, report });
+
+    let caps = VmxCapabilities::from_hardware().unwrap_or(VmxCapabilities::from_assumed_qemu());
+    let host = capture_host_launch_context(vmexit_entry as usize as u64);
+    if vmlaunch_guest(&launch, host, caps).is_err() {
+        LAUNCH_STASH = None;
+        GUEST_MMIO = None;
+        return false;
+    }
+
+    core::hint::unreachable_unchecked();
+}
+
 fn run_datapath_from_stash() -> ! {
     // SAFETY: stash is set before VMLAUNCH and `plans` outlives this init path.
     let stash = unsafe { LAUNCH_STASH.take() };
@@ -132,20 +213,25 @@ fn run_datapath_from_stash() -> ! {
         halt_forever();
     };
     unsafe {
-        MID_MMIO = None;
+        GUEST_MMIO = None;
         datapath::run_steady_state_loop(&*stash.plans, stash.report);
     }
 }
 
-fn verify_mid_guest_relay() -> Result<(), ()> {
-    // SAFETY: stash is set before VMLAUNCH and `plans` outlives this VM-exit handler.
+fn peek_mid_guest_relay() -> Result<(), ()> {
     let stash = unsafe { LAUNCH_STASH.as_ref() };
     let Some(stash) = stash else {
         return Err(());
     };
-    verify_mid_launch_relay(unsafe { &*stash.plans }, MID_LAUNCH_PAYLOAD)
-        .map(|_| ())
-        .map_err(|_| ())
+    peek_mid_launch_relay(unsafe { &*stash.plans }, MID_LAUNCH_PAYLOAD).map(|_| ()).map_err(|_| ())
+}
+
+fn verify_out_guest_drain() -> Result<(), ()> {
+    let stash = unsafe { LAUNCH_STASH.as_ref() };
+    let Some(stash) = stash else {
+        return Err(());
+    };
+    verify_mid_to_out_drained(unsafe { &*stash.plans }).map_err(|_| ())
 }
 
 fn inject_mid_launch_frame(plans: &GateDPlans) -> Result<(), RuntimeError> {
