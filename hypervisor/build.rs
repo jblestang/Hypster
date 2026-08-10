@@ -5,8 +5,9 @@
 use std::path::PathBuf;
 
 use hv_core::platform_ir::StaticPlatformIR;
-use hv_partition::gate_d_plans_from_resolved;
+use hv_partition::{build_guest_boot_info, gate_d_plans_from_resolved};
 use hv_runtime::GateDPlans;
+use hv_types::{VcpuId, VmId};
 
 fn main() {
     let manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").expect("manifest dir"));
@@ -31,6 +32,7 @@ fn main() {
         std::process::exit(1);
     }
     embed_guest_in_image(workspace, &out_dir);
+    embed_guest_mid_image(workspace, &out_dir, &platform);
 }
 
 fn embed_guest_in_image(workspace: &std::path::Path, out_dir: &std::path::Path) {
@@ -40,6 +42,29 @@ fn embed_guest_in_image(workspace: &std::path::Path, out_dir: &std::path::Path) 
     let rendered = format!("pub static GUEST_IN_IMAGE: &[u8] = &{:?};\n", bytes);
     let path = out_dir.join("guest_in_image.rs");
     if std::fs::write(path, rendered).is_err() {
+        std::process::exit(1);
+    }
+}
+
+fn embed_guest_mid_image(
+    workspace: &std::path::Path,
+    out_dir: &std::path::Path,
+    platform: &StaticPlatformIR,
+) {
+    let guest_path = workspace.join("target/x86_64-unknown-none/release/guest-mid");
+    println!("cargo:rerun-if-changed={}", guest_path.display());
+    let bytes = std::fs::read(&guest_path).unwrap_or_default();
+    let image = format!("pub static GUEST_MID_IMAGE: &[u8] = &{:?};\n", bytes);
+    let image_path = out_dir.join("guest_mid_image.rs");
+    if std::fs::write(image_path, image).is_err() {
+        std::process::exit(1);
+    }
+
+    let boot_info =
+        build_guest_boot_info(platform, VmId::new(1), VcpuId::new(0)).expect("mid boot info");
+    let boot = format!("pub static GUEST_MID_BOOT_INFO: &[u8] = &{:?};\n", boot_info.bytes);
+    let boot_path = out_dir.join("guest_mid_boot_info.rs");
+    if std::fs::write(boot_path, boot).is_err() {
         std::process::exit(1);
     }
 }

@@ -143,8 +143,11 @@ dependencies = [
 name = "guest-common"
 version = "0.1.0"
 dependencies = [
+ "hv-config-model",
+ "hv-core",
  "hv-guest-abi",
  "hv-ipc",
+ "hv-partition",
  "hv-types",
 ]
 

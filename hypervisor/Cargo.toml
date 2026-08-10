@@ -42,6 +42,7 @@ hv-partition = { path = "../crates/hv-partition", features = ["std"] }
 hv-runtime = { path = "../crates/hv-runtime" }
 hv-ept = { path = "../crates/hv-ept", features = ["std"] }
 hv-vtd = { path = "../crates/hv-vtd", features = ["std"] }
+hv-types = { workspace = true }
 
 [lints]
 workspace = true

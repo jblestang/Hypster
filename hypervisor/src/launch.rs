@@ -3,8 +3,9 @@
 #![allow(static_mut_refs)]
 
 use hv_runtime::{
-    capture_host_launch_context, dispatch_in_guest_vmexit, launch_plan_for_vm, resume_guest,
-    stage_guest_image, vmlaunch_guest, GateDInitReport, GateDPlans, MmioDispatch,
+    capture_host_launch_context, dispatch_in_guest_vmexit, inject_inbound_payload,
+    launch_plan_for_vm, resume_guest, stage_guest_image, vmlaunch_guest, ChannelBacking,
+    GateDInitReport, GateDPlans, MmioDispatch, RuntimeError,
 };
 use hv_types::VmId;
 use hv_vmx::VmxCapabilities;
@@ -13,10 +14,14 @@ use crate::datapath;
 use crate::serial;
 
 mod embedded {
-    include!(concat!(env!("OUT_DIR"), "/guest_in_image.rs"));
+    include!(concat!(env!("OUT_DIR"), "/guest_mid_boot_info.rs"));
+    include!(concat!(env!("OUT_DIR"), "/guest_mid_image.rs"));
 }
 
-use embedded::GUEST_IN_IMAGE;
+use embedded::{GUEST_MID_BOOT_INFO, GUEST_MID_IMAGE};
+
+const MID_VM_ID: VmId = VmId::new(1);
+const MID_LAUNCH_PAYLOAD: &[u8] = b"vmx-mid-relay";
 
 struct LaunchStash {
     plans: *const GateDPlans,
@@ -24,9 +29,9 @@ struct LaunchStash {
 }
 
 static mut LAUNCH_STASH: Option<LaunchStash> = None;
-static mut IN_MMIO: Option<MmioDispatch> = None;
+static mut MID_MMIO: Option<MmioDispatch> = None;
 
-/// Stages the IN guest and attempts VMLAUNCH when VMX is available.
+/// Stages the MID guest, injects one IPC frame, and attempts VMLAUNCH when VMX is available.
 ///
 /// Returns `true` when the guest launched and the VM-exit path entered the datapath loop.
 /// Returns `false` when staging or launch preparation fails.
@@ -35,34 +40,37 @@ static mut IN_MMIO: Option<MmioDispatch> = None;
 ///
 /// Caller must have completed Gate D init with VMX enabled. `plans` must remain valid until
 /// this function returns or hands off to the datapath loop.
-pub unsafe fn try_launch_in_guest(plans: &GateDPlans, report: GateDInitReport) -> bool {
-    if GUEST_IN_IMAGE.is_empty() {
+pub unsafe fn try_launch_mid_guest(plans: &GateDPlans, report: GateDInitReport) -> bool {
+    if GUEST_MID_IMAGE.is_empty() || GUEST_MID_BOOT_INFO.is_empty() {
         return false;
     }
 
-    let vm_id = VmId::new(0);
-    let boot_info = minimal_boot_info_bytes();
-    let mut launch = match launch_plan_for_vm(plans, vm_id) {
+    let mut launch = match launch_plan_for_vm(plans, MID_VM_ID) {
         Some(plan) => plan,
         None => return false,
     };
-    launch.guest_entry = match stage_guest_image(plans, vm_id, GUEST_IN_IMAGE, &boot_info) {
-        Ok(entry) => entry,
-        Err(_) => return false,
-    };
+    launch.guest_entry =
+        match stage_guest_image(plans, MID_VM_ID, GUEST_MID_IMAGE, GUEST_MID_BOOT_INFO) {
+            Ok(entry) => entry,
+            Err(_) => return false,
+        };
 
-    let partition = match plans.gate_c.ept.partitions.iter().find(|part| part.vm_id == vm_id) {
+    if inject_mid_launch_frame(plans).is_err() {
+        return false;
+    }
+
+    let partition = match plans.gate_c.ept.partitions.iter().find(|part| part.vm_id == MID_VM_ID) {
         Some(partition) => partition,
         None => return false,
     };
-    IN_MMIO = Some(MmioDispatch::from_ept_mappings(&partition.mappings));
+    MID_MMIO = Some(MmioDispatch::from_ept_mappings(&partition.mappings));
     LAUNCH_STASH = Some(LaunchStash { plans, report });
 
     let caps = VmxCapabilities::from_hardware().unwrap_or(VmxCapabilities::from_assumed_qemu());
     let host = capture_host_launch_context(vmexit_entry as usize as u64);
     if vmlaunch_guest(&launch, host, caps).is_err() {
         LAUNCH_STASH = None;
-        IN_MMIO = None;
+        MID_MMIO = None;
         return false;
     }
 
@@ -77,7 +85,7 @@ extern "C" {
 #[no_mangle]
 extern "C" fn vmexit_dispatch() -> ! {
     loop {
-        let dispatch = unsafe { IN_MMIO.as_mut() };
+        let dispatch = unsafe { MID_MMIO.as_mut() };
         let Some(dispatch) = dispatch else {
             serial::write_str("hypster: vmexit no mmio\n");
             halt_forever();
@@ -85,7 +93,7 @@ extern "C" fn vmexit_dispatch() -> ! {
 
         match unsafe { dispatch_in_guest_vmexit(dispatch) } {
             Ok(true) => {
-                serial::write_str("hypster: vmlaunch ok\n");
+                serial::write_str("hypster: guest mid ok\n");
                 run_datapath_from_stash();
             }
             Ok(false) => match unsafe { resume_guest() } {
@@ -118,31 +126,29 @@ fn run_datapath_from_stash() -> ! {
         halt_forever();
     };
     unsafe {
-        IN_MMIO = None;
+        MID_MMIO = None;
         datapath::run_steady_state_loop(&*stash.plans, stash.report);
     }
 }
 
-fn minimal_boot_info_bytes() -> [u8; core::mem::size_of::<hv_guest_abi::GuestBootInfo>()] {
-    let info = hv_guest_abi::GuestBootInfo {
-        header: hv_guest_abi::GuestBootInfoHeader {
-            magic: hv_guest_abi::GUEST_BOOT_INFO_MAGIC,
-            version_major: hv_guest_abi::GUEST_ABI_VERSION_MAJOR,
-            version_minor: hv_guest_abi::GUEST_ABI_VERSION_MINOR,
-            total_size: core::mem::size_of::<hv_guest_abi::GuestBootInfo>() as u32,
-            vm_id: 0,
-            vcpu_id: 0,
-        },
-        memory_region_count: 0,
-        ipc_region_count: 0,
-        mmio_region_count: 0,
-        reserved: 0,
+fn inject_mid_launch_frame(plans: &GateDPlans) -> Result<(), RuntimeError> {
+    let channel = plans
+        .ipc_channels
+        .iter()
+        .find(|ch| ch.name == "in_to_mid")
+        .ok_or(RuntimeError::TableRegionUnavailable)?;
+    let size = channel.shared_bytes as usize;
+    let ptr = channel.host_base.raw() as *mut u8;
+    // SAFETY: Gate D init assigned host backing for IPC rings before launch.
+    let backing = unsafe { core::slice::from_raw_parts_mut(ptr, size) };
+    let mut channel = ChannelBacking {
+        name: "in_to_mid",
+        backing,
+        slot_count: channel.slot_count,
+        slot_size: channel.slot_size,
     };
-    let mut bytes = [0u8; core::mem::size_of::<hv_guest_abi::GuestBootInfo>()];
-    unsafe {
-        core::ptr::write(bytes.as_mut_ptr() as *mut hv_guest_abi::GuestBootInfo, info);
-    }
-    bytes
+    inject_inbound_payload(&mut channel, MID_LAUNCH_PAYLOAD)?;
+    Ok(())
 }
 
 fn write_hex_u32(value: u32) {
