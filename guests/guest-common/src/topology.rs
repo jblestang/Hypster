@@ -14,8 +14,10 @@ pub const IPC_SLOT_SIZE: u32 = 2048;
 pub const IN_IN_TO_MID_GPA: u64 = 0x4000_0000;
 /// Guest-physical base of `in_to_mid` in the MID partition.
 pub const MID_IN_TO_MID_GPA: u64 = 0x8000_0000;
-/// Guest-physical base of `mid_to_out` in the MID partition.
-pub const MID_MID_TO_OUT_GPA: u64 = 0x8008_0148;
+/// Guest-physical base of `mid_to_out` in the MID partition (page-rounded stride).
+pub const MID_MID_TO_OUT_GPA: u64 = 0x8008_1000;
+/// Guest-physical base of `mid_to_out` in the OUT partition.
+pub const OUT_MID_TO_OUT_GPA: u64 = 0x4000_0000;
 
 /// Channel names for the validated topology.
 pub mod names {

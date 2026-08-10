@@ -7,7 +7,7 @@ use hv_ipc::{try_pop, try_push, IpcError};
 use crate::boot::{boot_info_ptr, ipc_region_base};
 use crate::topology::{
     names, IN_IN_TO_MID_GPA, IPC_SHARED_BYTES, IPC_SLOT_COUNT, IPC_SLOT_SIZE, MID_IN_TO_MID_GPA,
-    MID_MID_TO_OUT_GPA,
+    MID_MID_TO_OUT_GPA, OUT_MID_TO_OUT_GPA,
 };
 
 /// Relays at most one frame from `in_to_mid` into `mid_to_out`.
@@ -66,7 +66,7 @@ pub unsafe fn relay_once_then_halt() -> ! {
 /// Hypervisor must have mapped boot info and initialized IPC rings before guest entry.
 pub unsafe fn drain_once_then_halt() -> ! {
     let info = &*boot_info_ptr();
-    let mid_to_out_gpa = ipc_region_base(info, names::MID_TO_OUT).unwrap_or(MID_MID_TO_OUT_GPA);
+    let mid_to_out_gpa = ipc_region_base(info, names::MID_TO_OUT).unwrap_or(OUT_MID_TO_OUT_GPA);
     let slice = core::slice::from_raw_parts_mut(mid_to_out_gpa as *mut u8, shared_bytes());
     let mut slot = [0u8; IPC_SLOT_SIZE as usize];
     if try_pop(slice, names::MID_TO_OUT, IPC_SLOT_COUNT, IPC_SLOT_SIZE, &mut slot).is_ok() {

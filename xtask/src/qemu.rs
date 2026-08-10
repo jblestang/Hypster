@@ -297,7 +297,7 @@ fn kvm_usable() -> bool {
 fn enable_nested_vmx_args(args: &mut [String]) {
     prefer_kvm_accel(args);
     if kvm_usable() {
-        replace_cpu_arg(args, "host");
+        replace_cpu_arg(args, "host,+vmx");
     } else {
         replace_cpu_arg(args, "max");
     }
@@ -346,10 +346,13 @@ fn find_ovmf(config: &Path) -> Result<PathBuf, String> {
     }
 
     for candidate in [
-        "/usr/share/OVMF/OVMF_CODE.fd",
-        "/usr/share/OVMF/OVMF.fd",
         "/usr/share/qemu/OVMF.fd",
+        "/usr/share/ovmf/OVMF.fd",
+        "/usr/share/OVMF/OVMF_CODE.fd",
+        "/usr/share/OVMF/OVMF_CODE_4M.fd",
+        "/usr/share/OVMF/OVMF.fd",
         "/opt/OVMF/OVMF_CODE.fd",
+        "/opt/OVMF/OVMF_CODE_4M.fd",
     ] {
         let path = PathBuf::from(candidate);
         if path.is_file() {

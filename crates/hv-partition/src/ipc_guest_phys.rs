@@ -1,14 +1,18 @@
 //! Deterministic guest-physical IPC mapping offsets.
 
 use hv_config_model::intent::StaticIntentIR;
+use hv_types::arithmetic::align_up_u64;
 use hv_types::VmId;
 
 use crate::PartitionError;
 
+const IPC_GPA_PAGE_SIZE: u64 = 4096;
+
 /// Guest-physical base for an IPC channel mapped above guest RAM.
 ///
 /// Channels are placed sequentially after the partition private RAM region in
-/// ascending channel-name order for determinism.
+/// ascending channel-name order for determinism. Each channel advances the
+/// cursor by a page-rounded footprint so consecutive bases stay aligned.
 #[must_use]
 pub fn ipc_guest_phys_base(
     intent: &StaticIntentIR,
@@ -24,7 +28,8 @@ pub fn ipc_guest_phys_base(
         if channel.name == channel_name {
             return Some(cursor);
         }
-        cursor = cursor.checked_add(channel.shared_bytes)?;
+        let stride = align_up_u64(channel.shared_bytes, IPC_GPA_PAGE_SIZE).ok()?;
+        cursor = cursor.checked_add(stride)?;
     }
     None
 }
@@ -50,7 +55,9 @@ pub fn validate_ipc_layout(intent: &StaticIntentIR, vm_id: VmId) -> Result<(), P
         .ok_or(PartitionError::UnknownPartition { vm_id: vm_id.raw() })?;
     let mut cursor = partition.memory_bytes;
     for channel in visible_ipc_channels(intent, vm_id) {
-        cursor = cursor.checked_add(channel.shared_bytes).ok_or(PartitionError::Overflow)?;
+        let stride = align_up_u64(channel.shared_bytes, IPC_GPA_PAGE_SIZE)
+            .map_err(|_| PartitionError::Overflow)?;
+        cursor = cursor.checked_add(stride).ok_or(PartitionError::Overflow)?;
     }
     let _ = cursor;
     Ok(())
@@ -76,6 +83,8 @@ mod tests {
         let in_to_mid = ipc_guest_phys_base(intent, vm2, "in_to_mid").expect("in_to_mid");
         let mid_to_out = ipc_guest_phys_base(intent, vm2, "mid_to_out").expect("mid_to_out");
         assert!(mid_to_out > in_to_mid);
+        assert_eq!(in_to_mid % 4096, 0);
+        assert_eq!(mid_to_out % 4096, 0);
         validate_ipc_layout(intent, vm2).expect("ipc layout");
     }
 }

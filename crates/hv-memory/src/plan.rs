@@ -29,6 +29,16 @@ pub enum MemoryPurpose {
         /// Channel name.
         name: String,
     },
+    /// EPT page-table buffer.
+    EptTables,
+    /// VT-d page-table buffer.
+    VtdTables,
+    /// VMXON region.
+    VmxonRegion,
+    /// VMCS regions (one page per partition).
+    VmcsRegions,
+    /// Emulated MMIO backing pages.
+    MmioEmulation,
 }
 
 /// One planned host memory region.
@@ -56,7 +66,21 @@ struct PendingAllocation {
     size: u64,
 }
 
+/// EPT table buffer size reserved in the host memory plan.
+pub const EPT_TABLE_RESERVE_BYTES: u64 = 16 * 1024 * 1024;
+/// VT-d table buffer size reserved in the host memory plan.
+pub const VTD_TABLE_RESERVE_BYTES: u64 = 16 * 1024 * 1024;
+/// VMXON region size.
+pub const VMXON_RESERVE_BYTES: u64 = 4096;
+/// VMCS region pool size (enough for several partitions).
+pub const VMCS_RESERVE_BYTES: u64 = 64 * 1024;
+/// Emulated MMIO backing pool size.
+pub const MMIO_RESERVE_BYTES: u64 = 16 * 1024 * 1024;
+
 /// Builds a deterministic memory plan from conventional regions and intent.
+///
+/// Allocations are packed in purpose order across conventional regions without
+/// crossing region boundaries, so PCI holes between low and high RAM are skipped.
 pub fn plan_memory(
     intent: &StaticIntentIR,
     conventional: &[ConventionalRegion],
@@ -81,11 +105,33 @@ pub fn plan_memory(
         });
     }
     for channel in intent.ipc.iter() {
+        let size = align_up_u64(channel.shared_bytes, PLANNER_PAGE_SIZE)
+            .map_err(|_| MemoryPlanError::Overflow)?;
         pending.push(PendingAllocation {
             purpose: MemoryPurpose::IpcChannel { name: channel.name.clone() },
-            size: channel.shared_bytes,
+            size,
         });
     }
+    pending.push(PendingAllocation {
+        purpose: MemoryPurpose::EptTables,
+        size: EPT_TABLE_RESERVE_BYTES,
+    });
+    pending.push(PendingAllocation {
+        purpose: MemoryPurpose::VtdTables,
+        size: VTD_TABLE_RESERVE_BYTES,
+    });
+    pending.push(PendingAllocation {
+        purpose: MemoryPurpose::VmxonRegion,
+        size: VMXON_RESERVE_BYTES,
+    });
+    pending.push(PendingAllocation {
+        purpose: MemoryPurpose::VmcsRegions,
+        size: VMCS_RESERVE_BYTES,
+    });
+    pending.push(PendingAllocation {
+        purpose: MemoryPurpose::MmioEmulation,
+        size: MMIO_RESERVE_BYTES,
+    });
 
     let required: u64 = pending
         .iter()
@@ -96,46 +142,51 @@ pub fn plan_memory(
         return Err(MemoryPlanError::OutOfMemory { required, available });
     }
 
-    let mut cursor = select_allocation_base(conventional, required)?;
     let mut regions = Vec::with_capacity(pending.len());
+    let mut region_idx = 0usize;
+    let mut cursor = aligned_region_start(&conventional[0])?;
+    let mut region_end = region_exclusive_end(&conventional[0])?;
+
     for item in pending {
-        cursor = HostPhysAddr::new(
-            align_up_u64(cursor.raw(), PLANNER_PAGE_SIZE).map_err(|_| MemoryPlanError::Overflow)?,
-        );
-        let end =
-            checked_add_u64(cursor.raw(), item.size).map_err(|_| MemoryPlanError::Overflow)?;
-        regions.push(MemoryRegionPlan { purpose: item.purpose, base: cursor, size: item.size });
-        cursor = HostPhysAddr::new(end);
+        let size = align_up_u64(item.size, PLANNER_PAGE_SIZE).map_err(|_| MemoryPlanError::Overflow)?;
+        loop {
+            cursor =
+                HostPhysAddr::new(align_up_u64(cursor.raw(), PLANNER_PAGE_SIZE).map_err(|_| {
+                    MemoryPlanError::Overflow
+                })?);
+            let end = checked_add_u64(cursor.raw(), size).map_err(|_| MemoryPlanError::Overflow)?;
+            if end <= region_end.raw() {
+                regions.push(MemoryRegionPlan {
+                    purpose: item.purpose,
+                    base: cursor,
+                    size,
+                });
+                cursor = HostPhysAddr::new(end);
+                break;
+            }
+            region_idx = region_idx.checked_add(1).ok_or(MemoryPlanError::Overflow)?;
+            if region_idx >= conventional.len() {
+                return Err(MemoryPlanError::OutOfMemory { required, available });
+            }
+            cursor = aligned_region_start(&conventional[region_idx])?;
+            region_end = region_exclusive_end(&conventional[region_idx])?;
+        }
     }
 
     validate_plan(&regions)?;
     Ok(MemoryPlan { allocated_bytes: required, regions })
 }
 
-fn select_allocation_base(
-    conventional: &[ConventionalRegion],
-    required: u64,
-) -> Result<HostPhysAddr, MemoryPlanError> {
-    let mut best: Option<ConventionalRegion> = None;
-    for region in conventional {
-        if region.size < required {
-            continue;
-        }
-        best = Some(match best {
-            Some(current) if current.base.raw() > region.base.raw() => current,
-            _ => *region,
-        });
-    }
-    let region = best.ok_or(MemoryPlanError::NoConventionalMemory)?;
-    let aligned = align_up_u64(region.base.raw(), PLANNER_PAGE_SIZE)
-        .map_err(|_| MemoryPlanError::Overflow)?;
-    let end = checked_add_u64(aligned, required).map_err(|_| MemoryPlanError::Overflow)?;
-    if end
-        > checked_add_u64(region.base.raw(), region.size).map_err(|_| MemoryPlanError::Overflow)?
-    {
-        return Err(MemoryPlanError::OutOfMemory { required, available: region.size });
-    }
+fn aligned_region_start(region: &ConventionalRegion) -> Result<HostPhysAddr, MemoryPlanError> {
+    let aligned =
+        align_up_u64(region.base.raw(), PLANNER_PAGE_SIZE).map_err(|_| MemoryPlanError::Overflow)?;
     Ok(HostPhysAddr::new(aligned))
+}
+
+fn region_exclusive_end(region: &ConventionalRegion) -> Result<HostPhysAddr, MemoryPlanError> {
+    let end =
+        checked_add_u64(region.base.raw(), region.size).map_err(|_| MemoryPlanError::Overflow)?;
+    Ok(HostPhysAddr::new(end))
 }
 
 fn validate_plan(regions: &[MemoryRegionPlan]) -> Result<(), MemoryPlanError> {
@@ -168,5 +219,11 @@ fn purpose_label(purpose: &MemoryPurpose) -> String {
         MemoryPurpose::HypervisorPageTables => String::from("hypervisor_page_tables"),
         MemoryPurpose::PartitionGuestRam { vm_id } => format!("partition_guest_ram[{vm_id}]"),
         MemoryPurpose::IpcChannel { name } => format!("ipc[{name}]"),
+        MemoryPurpose::EptTables => String::from("ept_tables"),
+        MemoryPurpose::VtdTables => String::from("vtd_tables"),
+        MemoryPurpose::VmxonRegion => String::from("vmxon_region"),
+        MemoryPurpose::VmcsRegions => String::from("vmcs_regions"),
+        MemoryPurpose::MmioEmulation => String::from("mmio_emulation"),
     }
 }
+

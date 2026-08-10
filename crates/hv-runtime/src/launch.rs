@@ -13,7 +13,6 @@ pub const DEFAULT_GUEST_STACK: u64 = 0x8000;
 /// Gate D MVP guest boot info GPA.
 pub const DEFAULT_GUEST_BOOT_INFO_GPA: u64 = 0x9000;
 
-const VMCS_REGION_BASE: u64 = 0x1_1800_0000;
 const VMCS_REGION_SIZE: u64 = 4096;
 
 fn ept_root_for_vm(plans: &GateDPlans, vm_id: VmId) -> HostPhysAddr {
@@ -30,9 +29,10 @@ fn ept_root_for_vm(plans: &GateDPlans, vm_id: VmId) -> HostPhysAddr {
 #[must_use]
 pub fn plan_partition_launches(plans: &GateDPlans) -> alloc::vec::Vec<GuestLaunchPlan> {
     let mut out = alloc::vec::Vec::with_capacity(plans.gate_c.ept.partitions.len());
+    let vmcs_base = plans.gate_c.vmcs_region_base.raw();
     for partition in &plans.gate_c.ept.partitions {
         let vmcs_hpa =
-            HostPhysAddr::new(VMCS_REGION_BASE + (partition.vm_id.raw() as u64) * VMCS_REGION_SIZE);
+            HostPhysAddr::new(vmcs_base + (partition.vm_id.raw() as u64) * VMCS_REGION_SIZE);
         out.push(GuestLaunchPlan {
             vm_id: partition.vm_id,
             vmcs_hpa,
@@ -124,6 +124,7 @@ mod tests {
                 ept_table_base: HostPhysAddr::new(0x1_1510_0000),
                 vtd_table_base: HostPhysAddr::new(0x1_1610_0000),
                 vmxon_region_base: HostPhysAddr::new(0x1_1710_0000),
+                vmcs_region_base: HostPhysAddr::new(0x1_1800_0000),
                 ept_root_hp_as: alloc::vec![(VmId::new(0), HostPhysAddr::new(0x1_1510_1000))],
             },
             ipc_channels: alloc::vec::Vec::new(),

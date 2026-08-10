@@ -2,7 +2,7 @@
 
 use core::mem::{align_of, size_of};
 
-use hv_types::arithmetic::checked_add_u64;
+use hv_types::arithmetic::{align_up_u64, checked_add_u64};
 
 use crate::IpcError;
 
@@ -62,6 +62,22 @@ pub fn compute_shared_bytes(slot_count: u32, slot_size: u32) -> Result<u64, IpcE
     let slot_bytes = u64::from(slot_size);
     let payload = slots.checked_mul(slot_bytes).ok_or(IpcError::Overflow)?;
     checked_add_u64(IPC_RING_HEADER_BYTES as u64, payload).map_err(|_| IpcError::Overflow)
+}
+
+/// Page size used when placing IPC rings in guest/host physical maps.
+pub const IPC_MAPPING_PAGE_SIZE: u64 = 4096;
+
+/// Returns the page-rounded footprint for an IPC ring mapping.
+///
+/// Logical ring bytes from [`compute_shared_bytes`] may include a header that
+/// is not page-aligned; EPT/GPA placement must advance by this rounded size so
+/// consecutive channels stay page-aligned.
+///
+/// # Errors
+///
+/// Returns [`IpcError::Overflow`] when rounding overflows.
+pub fn ipc_mapping_bytes(shared_bytes: u64) -> Result<u64, IpcError> {
+    align_up_u64(shared_bytes, IPC_MAPPING_PAGE_SIZE).map_err(|_| IpcError::Overflow)
 }
 
 /// Initializes a ring in freshly zeroed shared memory.
@@ -296,6 +312,15 @@ mod tests {
     fn shared_bytes_matches_config_intent() {
         let bytes = compute_shared_bytes(256, 2048).expect("shared bytes");
         assert_eq!(bytes, IPC_RING_HEADER_BYTES as u64 + 256 * 2048);
+    }
+
+    #[test]
+    fn ipc_mapping_bytes_page_aligns_ring_header() {
+        let bytes = compute_shared_bytes(256, 2048).expect("shared bytes");
+        assert_eq!(bytes % IPC_MAPPING_PAGE_SIZE, 40);
+        let mapped = ipc_mapping_bytes(bytes).expect("mapping bytes");
+        assert_eq!(mapped % IPC_MAPPING_PAGE_SIZE, 0);
+        assert!(mapped >= bytes);
     }
 
     #[test]

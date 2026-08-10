@@ -1,7 +1,7 @@
 //! Host-assisted end-to-end datapath orchestration (IN → MID → OUT).
 
 use hv_e1000::{E1000DeviceState, MAX_FRAME_BYTES};
-use hv_ipc::IpcError;
+use hv_ipc::{ipc_mapping_bytes, IpcError};
 
 use crate::datapath::{
     drain_outbound_payload, inject_inbound_payload, run_datapath_step, ChannelBacking,
@@ -160,7 +160,8 @@ fn build_topology_channels<'a>(
 
     for plan in &plans.ipc_channels {
         let size = plan.shared_bytes as usize;
-        let end = offset.checked_add(size).ok_or(IpcError::Overflow)?;
+        let stride = ipc_mapping_bytes(size as u64)? as usize;
+        let end = offset.checked_add(stride).ok_or(IpcError::Overflow)?;
         if end > total {
             return Err(IpcError::BufferTooSmall);
         }
@@ -205,7 +206,7 @@ mod tests {
 
     use alloc::vec;
 
-    use hv_ipc::init_ring;
+    use hv_ipc::{compute_shared_bytes, init_ring, ipc_mapping_bytes};
 
     use super::*;
 
@@ -227,6 +228,7 @@ mod tests {
                 ept_table_base: HostPhysAddr::new(0x1_1510_0000),
                 vtd_table_base: HostPhysAddr::new(0x1_1610_0000),
                 vmxon_region_base: HostPhysAddr::new(0x1_1710_0000),
+                vmcs_region_base: HostPhysAddr::new(0x1_1800_0000),
                 ept_root_hp_as: alloc::vec::Vec::new(),
             },
             ipc_channels: alloc::vec![
@@ -235,14 +237,14 @@ mod tests {
                     slot_count: SLOT_COUNT,
                     slot_size: SLOT_SIZE,
                     host_base: HostPhysAddr::new(in_to_mid.as_mut_ptr() as u64),
-                    shared_bytes: in_to_mid.len() as u64,
+                    shared_bytes: compute_shared_bytes(SLOT_COUNT, SLOT_SIZE).expect("ring"),
                 },
                 IpcChannelPlan {
                     name: alloc::string::String::from("mid_to_out"),
                     slot_count: SLOT_COUNT,
                     slot_size: SLOT_SIZE,
                     host_base: HostPhysAddr::new(mid_to_out.as_mut_ptr() as u64),
-                    shared_bytes: mid_to_out.len() as u64,
+                    shared_bytes: compute_shared_bytes(SLOT_COUNT, SLOT_SIZE).expect("ring"),
                 },
             ],
             config_hash: ConfigHash([0; 32]),
@@ -252,14 +254,16 @@ mod tests {
 
     #[test]
     fn e2e_once_moves_payload_in_to_out() {
-        let mut in_to_mid = vec![0u8; 16424];
-        let mut mid_to_out = vec![0u8; 16424];
+        let ring = compute_shared_bytes(SLOT_COUNT, SLOT_SIZE).expect("ring") as usize;
+        let stride = ipc_mapping_bytes(ring as u64).expect("stride") as usize;
+        let mut in_to_mid = vec![0u8; ring];
+        let mut mid_to_out = vec![0u8; ring];
         init_ring(&mut in_to_mid, "in_to_mid", SLOT_COUNT, SLOT_SIZE).expect("init in");
         init_ring(&mut mid_to_out, "mid_to_out", SLOT_COUNT, SLOT_SIZE).expect("init out");
         let plans = sample_plans(&mut in_to_mid, &mut mid_to_out);
-        let mut backing = vec![0u8; in_to_mid.len() + mid_to_out.len()];
-        backing[..in_to_mid.len()].copy_from_slice(&in_to_mid);
-        backing[in_to_mid.len()..].copy_from_slice(&mid_to_out);
+        let mut backing = vec![0u8; stride * 2];
+        backing[..ring].copy_from_slice(&in_to_mid);
+        backing[stride..stride + ring].copy_from_slice(&mid_to_out);
         let mut engine = DatapathEngine::from_plans(&plans, &mut backing).expect("engine");
         let mut out = [0u8; SLOT_SIZE as usize];
         let report = engine.run_e2e_once(b"udp-payload", &mut out).expect("e2e");

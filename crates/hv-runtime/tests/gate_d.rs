@@ -16,6 +16,7 @@ use hv_runtime::{
 use hv_types::{HostPhysAddr, VcpuId, VmId};
 
 const IPC_RING_BYTES: usize = 524_328;
+const IPC_MAPPING_BYTES: usize = 528_384;
 
 #[test]
 fn gate_d_ipc_ring_push_pop_across_channels() {
@@ -76,12 +77,20 @@ fn gate_d_runtime_initialize_with_allocated_ipc_backing() {
     let mut plans = gate_d_plans_from_resolved(&platform);
     plans.require_config_hash = false;
 
-    let mut ipc_backing = vec![0u8; IPC_RING_BYTES * plans.ipc_channels.len()];
+    // Host-side unit tests cannot RDMSR/VMXON or poke firmware HPAs. Force the
+    // table-install path to fail closed before privileged hardware access.
+    plans.gate_c.ept_table_base = HostPhysAddr::new(0);
+    plans.gate_c.vtd_table_base = HostPhysAddr::new(0);
+    plans.gate_c.vmxon_region_base = HostPhysAddr::new(0);
+    plans.gate_c.vmcs_region_base = HostPhysAddr::new(0);
+
+    let mut ipc_backing = vec![0u8; IPC_MAPPING_BYTES * plans.ipc_channels.len()];
     let mut offset = 0usize;
     for channel in &mut plans.ipc_channels {
         let size = channel.shared_bytes as usize;
         channel.host_base = HostPhysAddr::new(ipc_backing.as_mut_ptr() as u64 + offset as u64);
-        offset += size;
+        offset += IPC_MAPPING_BYTES;
+        let _ = size;
     }
 
     let total = core::mem::size_of::<hv_boot_abi::BootInfo>();
@@ -186,6 +195,7 @@ fn gate_d_gate_c_plans_remain_compatible() {
         ept_table_base: HostPhysAddr::new(0x1_1510_0000),
         vtd_table_base: HostPhysAddr::new(0x1_1610_0000),
         vmxon_region_base: HostPhysAddr::new(0x1_1710_0000),
+        vmcs_region_base: HostPhysAddr::new(0x1_1800_0000),
         ept_root_hp_as: Vec::new(),
     };
 }
@@ -199,7 +209,7 @@ fn gate_d_assign_ipc_backing_aligns_ept_ipc_host_phys() {
     let platform = resolve_platform(&compiled.intent, &observed).expect("resolve");
     let mut plans = gate_d_plans_from_resolved(&platform);
 
-    let mut ipc_backing = vec![0u8; 524_328 * plans.ipc_channels.len()];
+    let mut ipc_backing = vec![0u8; IPC_MAPPING_BYTES * plans.ipc_channels.len()];
     assign_ipc_host_backing(&mut plans, &mut ipc_backing).expect("assign");
 
     for channel in &plans.ipc_channels {
@@ -238,8 +248,9 @@ fn gate_d_e2e_datapath_moves_payload_through_engine() {
         .ipc_channels
         .iter()
         .map(|channel| {
-            compute_shared_bytes(channel.slot_count, channel.slot_size).expect("ring bytes")
-                as usize
+            let shared =
+                compute_shared_bytes(channel.slot_count, channel.slot_size).expect("ring bytes");
+            hv_ipc::ipc_mapping_bytes(shared).expect("mapping bytes") as usize
         })
         .sum();
     let mut ipc_backing = vec![0u8; total_backing];
@@ -296,8 +307,9 @@ fn gate_d_mid_launch_relay_verification() {
         .ipc_channels
         .iter()
         .map(|channel| {
-            compute_shared_bytes(channel.slot_count, channel.slot_size).expect("ring bytes")
-                as usize
+            let shared =
+                compute_shared_bytes(channel.slot_count, channel.slot_size).expect("ring bytes");
+            hv_ipc::ipc_mapping_bytes(shared).expect("mapping bytes") as usize
         })
         .sum();
     let mut ipc_backing = vec![0u8; total_backing];
@@ -368,8 +380,9 @@ fn gate_d_mid_out_launch_chain_verification() {
         .ipc_channels
         .iter()
         .map(|channel| {
-            compute_shared_bytes(channel.slot_count, channel.slot_size).expect("ring bytes")
-                as usize
+            let shared =
+                compute_shared_bytes(channel.slot_count, channel.slot_size).expect("ring bytes");
+            hv_ipc::ipc_mapping_bytes(shared).expect("mapping bytes") as usize
         })
         .sum();
     let mut ipc_backing = vec![0u8; total_backing];
@@ -450,8 +463,9 @@ fn gate_d_in_mid_out_guest_chain_verification() {
         .ipc_channels
         .iter()
         .map(|channel| {
-            compute_shared_bytes(channel.slot_count, channel.slot_size).expect("ring bytes")
-                as usize
+            let shared =
+                compute_shared_bytes(channel.slot_count, channel.slot_size).expect("ring bytes");
+            hv_ipc::ipc_mapping_bytes(shared).expect("mapping bytes") as usize
         })
         .sum();
     let mut ipc_backing = vec![0u8; total_backing];

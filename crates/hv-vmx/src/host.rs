@@ -83,6 +83,12 @@ impl VmxHostInit {
             return Err(VmxError::MisalignedVmxonRegion);
         }
 
+        let cr0 = hv_x86::read_cr0().ok_or(VmxError::Cr4Unavailable)?;
+        let new_cr0 = (cr0 | self.caps.cr0_fixed0) & self.caps.cr0_fixed1;
+        if new_cr0 != cr0 && !unsafe { hv_x86::write_cr0(new_cr0) } {
+            return Err(VmxError::Cr0UpdateFailed);
+        }
+
         let cr4 = hv_x86::read_cr4().ok_or(VmxError::Cr4Unavailable)?;
         if (cr4 & Cr4Flags::VMXE) != 0 {
             return Err(VmxError::VmxAlreadyEnabled);

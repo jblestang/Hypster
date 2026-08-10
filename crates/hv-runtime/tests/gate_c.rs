@@ -105,6 +105,7 @@ fn gate_c_runtime_initialize_without_hardware_vmx() {
         ept_table_base: HostPhysAddr::new(0),
         vtd_table_base: HostPhysAddr::new(0),
         vmxon_region_base: HostPhysAddr::new(0),
+        vmcs_region_base: HostPhysAddr::new(0),
         ept_root_hp_as: Vec::new(),
     };
     // CPU probe may fail on hosts without VMX; that is acceptable for CI.

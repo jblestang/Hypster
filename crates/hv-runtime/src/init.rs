@@ -39,6 +39,8 @@ pub struct GateCPlans {
     pub vtd_table_base: HostPhysAddr,
     /// Host physical base for the VMXON region.
     pub vmxon_region_base: HostPhysAddr,
+    /// Host physical base for the VMCS region pool.
+    pub vmcs_region_base: HostPhysAddr,
     /// Installed EPT root HPAs per partition (filled during init).
     pub ept_root_hp_as: alloc::vec::Vec<(hv_types::VmId, HostPhysAddr)>,
 }
@@ -250,23 +252,18 @@ fn probe_cpu_for_runtime() -> Result<(), RuntimeError> {
 fn enable_vmx(plans: &GateCPlans) -> Result<bool, RuntimeError> {
     #[cfg(all(feature = "hardware", target_arch = "x86_64"))]
     {
-        let mut init = match VmxHostInit::from_hardware() {
-            Ok(init) => init,
-            Err(_) => return Ok(false),
-        };
+        let mut init = VmxHostInit::from_hardware()?;
         let revision = init.capabilities().revision_id;
         let region = VmxonRegion::new(revision);
         let region_ptr = plans.vmxon_region_base.raw() as *mut u8;
         if region_ptr.is_null() {
-            return Ok(false);
+            return Err(RuntimeError::TableRegionUnavailable);
         }
         let region_bytes =
             unsafe { core::slice::from_raw_parts_mut(region_ptr, VMXON_REGION_SIZE) };
         region_bytes.copy_from_slice(region.as_bytes());
         // SAFETY: VMXON region is initialized and loader-reserved.
-        if unsafe { init.try_enable_vmx(plans.vmxon_region_base) }.is_err() {
-            return Ok(false);
-        }
+        unsafe { init.try_enable_vmx(plans.vmxon_region_base) }?;
         Ok(true)
     }
     #[cfg(not(all(feature = "hardware", target_arch = "x86_64")))]
@@ -311,6 +308,7 @@ mod tests {
             ept_table_base: HostPhysAddr::new(0x1_1510_0000),
             vtd_table_base: HostPhysAddr::new(0x1_1610_0000),
             vmxon_region_base: HostPhysAddr::new(0x1_1710_0000),
+            vmcs_region_base: HostPhysAddr::new(0x1_1800_0000),
             ept_root_hp_as: alloc::vec::Vec::new(),
         };
         assert!(initialize(&info, &mut plans).is_err());
@@ -338,6 +336,7 @@ mod tests {
             ept_table_base: HostPhysAddr::new(0x1_1510_0000),
             vtd_table_base: HostPhysAddr::new(0x1_1610_0000),
             vmxon_region_base: HostPhysAddr::new(0x1_1710_0000),
+            vmcs_region_base: HostPhysAddr::new(0x1_1800_0000),
             ept_root_hp_as: alloc::vec::Vec::new(),
         };
         let roots = compute_ept_root_hp_as(&plans).expect("ept roots");

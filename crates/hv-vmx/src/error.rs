@@ -19,6 +19,8 @@ pub enum VmxError {
     VmxDisabledInFeatureControl,
     /// VMX capability MSRs could not be read.
     CapabilitiesUnavailable,
+    /// CR0 could not be updated to satisfy VMX fixed bits.
+    Cr0UpdateFailed,
     /// CR4 could not be updated with VMXE.
     Cr4UpdateFailed,
     /// VMXON instruction failed.
@@ -57,6 +59,7 @@ impl fmt::Display for VmxError {
             }
             Self::VmxDisabledInFeatureControl => f.write_str("VMX disabled in feature control"),
             Self::CapabilitiesUnavailable => f.write_str("VMX capability MSRs unavailable"),
+            Self::Cr0UpdateFailed => f.write_str("failed to satisfy CR0 fixed bits"),
             Self::Cr4UpdateFailed => f.write_str("failed to set CR4.VMXE"),
             Self::VmxonFailed => f.write_str("VMXON failed"),
             Self::MisalignedVmxonRegion => f.write_str("VMXON region not 4 KiB aligned"),

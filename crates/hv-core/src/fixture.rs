@@ -41,7 +41,13 @@ pub fn qemu_validation_observed() -> Result<ObservedPlatform, &'static str> {
         ..AcpiPlatformSummary::default()
     };
 
-    let memory = [(7u32, hv_types::HostPhysAddr::new(0x1000_0000), 6 * 1024 * 1024 * 1024u64)];
+    // Match QEMU/OVMF 8 GiB layout: conventional RAM below the PCI hole, then
+    // again above 4 GiB. A single contiguous 6 GiB region would place guest RAM
+    // inside 0xC000_0000..0x1_0000_0000 where there is no DRAM.
+    let memory = [
+        (7u32, hv_types::HostPhysAddr::new(0x1000_0000), 0xC000_0000 - 0x1000_0000),
+        (7u32, hv_types::HostPhysAddr::new(0x1_0000_0000), 4 * 1024 * 1024 * 1024u64),
+    ];
     let pci = [
         ObservedPciDevice { bdf: literal_bdf(3, 0)? },
         ObservedPciDevice { bdf: literal_bdf(4, 0)? },

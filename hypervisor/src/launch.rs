@@ -99,6 +99,26 @@ extern "C" fn vmexit_dispatch() -> ! {
                     Ok(reason) => {
                         serial::write_str("hypster: vmexit reason=");
                         write_hex_u32(reason);
+                        serial::write_str(" rip=");
+                        match unsafe { hv_vmx::vmread(hv_vmx::vmcs::GUEST_RIP) } {
+                            Ok(rip) => write_hex_u64(rip),
+                            Err(_) => serial::write_str("????"),
+                        }
+                        serial::write_str(" qual=");
+                        match unsafe { hv_vmx::vmread(hv_vmx::vmcs::EXIT_QUALIFICATION) } {
+                            Ok(qual) => write_hex_u64(qual),
+                            Err(_) => serial::write_str("????"),
+                        }
+                        serial::write_str(" eptp=");
+                        match unsafe { hv_vmx::vmread(hv_vmx::vmcs::EPT_POINTER) } {
+                            Ok(eptp) => write_hex_u64(eptp),
+                            Err(_) => serial::write_str("????"),
+                        }
+                        serial::write_str(" cr3=");
+                        match unsafe { hv_vmx::vmread(hv_vmx::vmcs::GUEST_CR3) } {
+                            Ok(cr3) => write_hex_u64(cr3),
+                            Err(_) => serial::write_str("????"),
+                        }
                         serial::write_str("\n");
                     }
                     Err(_) => serial::write_str("hypster: vmexit read fail\n"),
@@ -234,10 +254,21 @@ unsafe fn launch_guest(
 
     let caps = VmxCapabilities::from_hardware().unwrap_or(VmxCapabilities::from_assumed_qemu());
     let host = capture_host_launch_context(vmexit_entry as usize as u64);
-    if vmlaunch_guest(&launch, host, caps).is_err() {
-        LAUNCH_STASH = None;
-        GUEST_MMIO = None;
-        return false;
+    match vmlaunch_guest(&launch, host, caps) {
+        Ok(()) => {}
+        Err(err) => {
+            serial::write_str("hypster: vmlaunch fail: ");
+            serial::write_str(err.as_str());
+            serial::write_str(" err=");
+            match unsafe { hv_runtime::read_vm_instruction_error() } {
+                Ok(code) => write_hex_u32(code),
+                Err(_) => serial::write_str("????"),
+            }
+            serial::write_str("\n");
+            LAUNCH_STASH = None;
+            GUEST_MMIO = None;
+            return false;
+        }
     }
 
     core::hint::unreachable_unchecked();
@@ -291,6 +322,14 @@ fn guest_images_missing() -> bool {
 fn write_hex_u32(value: u32) {
     const HEX: &[u8; 16] = b"0123456789abcdef";
     for shift in (0..8).rev() {
+        let nibble = ((value >> (shift * 4)) & 0xF) as usize;
+        serial::write_byte(HEX[nibble]);
+    }
+}
+
+fn write_hex_u64(value: u64) {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    for shift in (0..16).rev() {
         let nibble = ((value >> (shift * 4)) & 0xF) as usize;
         serial::write_byte(HEX[nibble]);
     }

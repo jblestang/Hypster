@@ -32,12 +32,25 @@ pub fn gate_d_plans_from_platform(
     GateDPlans { gate_c, ipc_channels, config_hash: platform.config_hash, require_config_hash }
 }
 
-/// Gate C MVP EPT table buffer base (16 MiB), placed after IPC backing.
+/// Fallback Gate C MVP EPT table buffer base (16 MiB).
 pub const EPT_TABLE_BASE: HostPhysAddr = HostPhysAddr::new(0x1_1510_0000);
-/// Gate C MVP VT-d table buffer base (16 MiB reserved).
+/// Fallback Gate C MVP VT-d table buffer base (16 MiB reserved).
 pub const VTD_TABLE_BASE: HostPhysAddr = HostPhysAddr::new(0x1_1610_0000);
-/// Gate C MVP VMXON region base (4 KiB reserved).
+/// Fallback Gate C MVP VMXON region base (4 KiB reserved).
 pub const VMXON_REGION_BASE: HostPhysAddr = HostPhysAddr::new(0x1_1710_0000);
+
+/// Fallback Gate C MVP VMCS region pool base.
+const VMCS_REGION_BASE_FALLBACK: HostPhysAddr = HostPhysAddr::new(0x1_1800_0000);
+
+fn region_base(platform: &StaticPlatformIR, purpose: MemoryPurpose, fallback: HostPhysAddr) -> HostPhysAddr {
+    platform
+        .memory
+        .regions
+        .iter()
+        .find(|region| region.purpose == purpose)
+        .map(|region| region.base)
+        .unwrap_or(fallback)
+}
 
 /// Builds Gate D plans with resolved EPT/VT-d tables from platform resolution.
 #[must_use]
@@ -45,9 +58,10 @@ pub fn gate_d_plans_from_resolved(platform: &StaticPlatformIR) -> GateDPlans {
     let gate_c = GateCPlans {
         ept: platform.ept.clone(),
         vtd: platform.vtd.clone(),
-        ept_table_base: EPT_TABLE_BASE,
-        vtd_table_base: VTD_TABLE_BASE,
-        vmxon_region_base: VMXON_REGION_BASE,
+        ept_table_base: region_base(platform, MemoryPurpose::EptTables, EPT_TABLE_BASE),
+        vtd_table_base: region_base(platform, MemoryPurpose::VtdTables, VTD_TABLE_BASE),
+        vmxon_region_base: region_base(platform, MemoryPurpose::VmxonRegion, VMXON_REGION_BASE),
+        vmcs_region_base: region_base(platform, MemoryPurpose::VmcsRegions, VMCS_REGION_BASE_FALLBACK),
         ept_root_hp_as: alloc::vec::Vec::new(),
     };
     gate_d_plans_from_platform(platform, gate_c, true)

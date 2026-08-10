@@ -9,14 +9,15 @@ use hv_runtime::{assign_ipc_host_backing, DatapathEngine, GateDInitReport, GateD
 use crate::serial;
 
 /// Host backing for the two IPC channels in `configs/qemu.yaml`.
-const IPC_RING_BYTES: usize = 524_328;
+/// Page-rounded so consecutive EPT IPC mappings stay aligned.
+const IPC_MAPPING_BYTES: usize = 528_384;
 
-#[repr(align(8))]
+#[repr(align(4096))]
 struct IpcBacking {
-    bytes: [u8; IPC_RING_BYTES * 2],
+    bytes: [u8; IPC_MAPPING_BYTES * 2],
 }
 
-static mut IPC_BACKING: IpcBacking = IpcBacking { bytes: [0; IPC_RING_BYTES * 2] };
+static mut IPC_BACKING: IpcBacking = IpcBacking { bytes: [0; IPC_MAPPING_BYTES * 2] };
 
 /// Patches embedded plans to use hypervisor-local IPC backing and initializes rings.
 ///

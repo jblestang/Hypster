@@ -59,7 +59,8 @@ pub fn build_guest_vmcs_fields(
 
     let proc_based = PROC_BASED_ACTIVATE_SECONDARY | PROC_BASED_HLT_EXITING;
     let proc_based2 = PROC_BASED2_ENABLE_EPT;
-    let ept_ptr = plan.ept_root_hpa.raw() | 0x6;
+    // EPTP: WB memory type (6) + 4-level walk ((3 << 3)).
+    let ept_ptr = plan.ept_root_hpa.raw() | (3 << 3) | 6;
 
     Ok(alloc::vec![
         VmcsFieldWrite { field: VMCS_LINK_POINTER, value: u64::MAX },

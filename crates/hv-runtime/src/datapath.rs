@@ -2,7 +2,9 @@
 
 use alloc::vec;
 
-use hv_ipc::{peek_front_payload, ring_has_pending_frame, try_pop, try_push, IpcError};
+use hv_ipc::{
+    ipc_mapping_bytes, peek_front_payload, ring_has_pending_frame, try_pop, try_push, IpcError,
+};
 
 use crate::error::RuntimeError;
 use crate::partition::{GateDPlans, IpcChannelPlan};
@@ -231,7 +233,8 @@ pub fn channel_backings_from_plans<'a>(
     let total = backing.len();
     for plan in plans {
         let size = plan.shared_bytes as usize;
-        let end = offset.checked_add(size).ok_or(IpcError::Overflow)?;
+        let stride = ipc_mapping_bytes(size as u64)?;
+        let end = offset.checked_add(stride as usize).ok_or(IpcError::Overflow)?;
         if end > total {
             return Err(IpcError::BufferTooSmall);
         }

@@ -5,7 +5,8 @@ use alloc::vec::Vec;
 
 use hv_config_model::intent::StaticIntentIR;
 use hv_memory::plan::{MemoryPlan, MemoryPurpose};
-use hv_types::arithmetic::{checked_add_u64, ranges_overlap_u64};
+use hv_memory::PLANNER_PAGE_SIZE;
+use hv_types::arithmetic::{align_up_u64, checked_add_u64, ranges_overlap_u64};
 use hv_types::{GuestPhysAddr, VmId};
 
 use crate::error::EptPlanError;
@@ -36,7 +37,7 @@ pub fn plan_ept(intent: &StaticIntentIR, memory: &MemoryPlan) -> Result<EptPlan,
         }];
 
         append_ipc_mappings(intent, memory, partition.vm_id, &mut mappings)?;
-        append_mmio_mappings(partition, &mut mappings)?;
+        append_mmio_mappings(intent, memory, partition, &mut mappings)?;
         validate_partition(partition.vm_id, &mappings)?;
         partitions.push(EptPartitionPlan { vm_id: partition.vm_id, mappings });
     }
@@ -68,33 +69,44 @@ fn append_ipc_mappings(
                 channel: channel.name.clone(),
             });
         };
+        let map_size = align_up_u64(channel.shared_bytes, PLANNER_PAGE_SIZE)
+            .map_err(|_| EptPlanError::Overflow)?;
         mappings.push(EptMapping {
             guest_phys: GuestPhysAddr::new(cursor),
             host_phys: host.base,
-            size: channel.shared_bytes,
+            size: map_size,
             permissions: EptPermissions::GUEST_RAM,
             memory_type: EptMemoryType::WriteBack,
         });
-        cursor = cursor.checked_add(channel.shared_bytes).ok_or(EptPlanError::Overflow)?;
+        cursor = cursor.checked_add(map_size).ok_or(EptPlanError::Overflow)?;
     }
     Ok(())
 }
 
 fn append_mmio_mappings(
+    intent: &StaticIntentIR,
+    memory: &MemoryPlan,
     partition: &hv_config_model::intent::PartitionIntent,
     mappings: &mut Vec<EptMapping>,
 ) -> Result<(), EptPlanError> {
     const MMIO_GUEST_BASE: u64 = 0xFEB0_0000;
     const MMIO_GUEST_STRIDE: u64 = 0x10_0000;
     const MMIO_REGION_SIZE: u64 = 128 * 1024;
-    const MMIO_HOST_BASE: u64 = 0x1_1720_0000;
     const MMIO_HOST_STRIDE: u64 = 0x10_0000;
+
+    let _ = intent;
+    let mmio_base = memory
+        .regions
+        .iter()
+        .find(|region| matches!(region.purpose, MemoryPurpose::MmioEmulation))
+        .map(|region| region.base.raw())
+        .unwrap_or(0x1_1720_0000);
 
     for (idx, _device) in partition.devices.iter().enumerate() {
         mappings.push(EptMapping {
             guest_phys: GuestPhysAddr::new(MMIO_GUEST_BASE + (idx as u64) * MMIO_GUEST_STRIDE),
             host_phys: hv_types::HostPhysAddr::new(
-                MMIO_HOST_BASE
+                mmio_base
                     + (partition.vm_id.raw() as u64) * MMIO_HOST_STRIDE
                     + (idx as u64) * MMIO_HOST_STRIDE,
             ),

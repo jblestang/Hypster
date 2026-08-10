@@ -65,20 +65,30 @@ pub unsafe fn vmresume() -> Result<(), VmxError> {
     vmresume_impl()
 }
 
+/// Checks RFLAGS after a VMX instruction that reports status in CF/ZF.
+///
+/// Intel VMfailInvalid sets CF; VMfailValid sets ZF. Either means failure.
+#[inline]
+fn vmx_failed(flags: u8) -> bool {
+    flags != 0
+}
+
 #[cfg(target_arch = "x86_64")]
 unsafe fn vmxon_impl(region_hpa: u64) -> Result<(), VmxError> {
+    let mut region_ptr = region_hpa;
     let failed: u8;
     // SAFETY: caller guarantees VMX prerequisites and region validity.
+    // VMXON reads a 64-bit physical address from memory.
     unsafe {
         core::arch::asm!(
             "vmxon [{region}]",
-            "setc {failed}",
-            region = in(reg) region_hpa,
+            "setbe {failed}",
+            region = in(reg) &mut region_ptr,
             failed = lateout(reg_byte) failed,
             options(nostack),
         );
     }
-    if failed != 0 {
+    if vmx_failed(failed) {
         return Err(VmxError::VmxonFailed);
     }
     Ok(())
@@ -91,18 +101,19 @@ unsafe fn vmxon_impl(_region_hpa: u64) -> Result<(), VmxError> {
 
 #[cfg(target_arch = "x86_64")]
 unsafe fn vmclear_impl(vmcs_hpa: u64) -> Result<(), VmxError> {
+    let mut region_ptr = vmcs_hpa;
     let failed: u8;
     // SAFETY: caller guarantees VMCS region validity.
     unsafe {
         core::arch::asm!(
             "vmclear [{region}]",
-            "setc {failed}",
-            region = in(reg) vmcs_hpa,
+            "setbe {failed}",
+            region = in(reg) &mut region_ptr,
             failed = lateout(reg_byte) failed,
             options(nostack),
         );
     }
-    if failed != 0 {
+    if vmx_failed(failed) {
         return Err(VmxError::VmclearFailed);
     }
     Ok(())
@@ -115,18 +126,19 @@ unsafe fn vmclear_impl(_vmcs_hpa: u64) -> Result<(), VmxError> {
 
 #[cfg(target_arch = "x86_64")]
 unsafe fn vmptrld_impl(vmcs_hpa: u64) -> Result<(), VmxError> {
+    let mut region_ptr = vmcs_hpa;
     let failed: u8;
     // SAFETY: caller guarantees VMCS region validity.
     unsafe {
         core::arch::asm!(
             "vmptrld [{region}]",
-            "setc {failed}",
-            region = in(reg) vmcs_hpa,
+            "setbe {failed}",
+            region = in(reg) &mut region_ptr,
             failed = lateout(reg_byte) failed,
             options(nostack),
         );
     }
-    if failed != 0 {
+    if vmx_failed(failed) {
         return Err(VmxError::VmptrldFailed);
     }
     Ok(())
@@ -141,17 +153,18 @@ unsafe fn vmptrld_impl(_vmcs_hpa: u64) -> Result<(), VmxError> {
 unsafe fn vmwrite_impl(field: u32, value: u64) -> Result<(), VmxError> {
     let failed: u8;
     // SAFETY: caller guarantees VMCS is loaded and field is valid.
+    // Intel: VMWRITE r64 (field), r/m64 (value).
     unsafe {
         core::arch::asm!(
-            "vmwrite {value}, {field}",
-            "setc {failed}",
+            "vmwrite {field}, {value}",
+            "setbe {failed}",
             field = in(reg) field as u64,
             value = in(reg) value,
             failed = lateout(reg_byte) failed,
             options(nostack),
         );
     }
-    if failed != 0 {
+    if vmx_failed(failed) {
         return Err(VmxError::VmwriteFailed);
     }
     Ok(())
@@ -165,19 +178,20 @@ unsafe fn vmwrite_impl(_field: u32, _value: u64) -> Result<(), VmxError> {
 #[cfg(target_arch = "x86_64")]
 unsafe fn vmread_impl(field: u32) -> Result<u64, VmxError> {
     let failed: u8;
-    let mut value: u64;
+    let value: u64;
     // SAFETY: caller guarantees VMCS is loaded and field is valid.
+    // Intel: VMREAD r/m64 (dest), r64 (field encoding).
     unsafe {
         core::arch::asm!(
-            "vmread [{value_out}], {field}",
-            "setc {failed}",
+            "vmread {value}, {field}",
+            "setbe {failed}",
             field = in(reg) field as u64,
-            value_out = lateout(reg) value,
+            value = out(reg) value,
             failed = lateout(reg_byte) failed,
             options(nostack),
         );
     }
-    if failed != 0 {
+    if vmx_failed(failed) {
         return Err(VmxError::VmreadFailed);
     }
     Ok(value)
@@ -192,15 +206,16 @@ unsafe fn vmread_impl(_field: u32) -> Result<u64, VmxError> {
 unsafe fn vmlaunch_impl() -> Result<(), VmxError> {
     let failed: u8;
     // SAFETY: caller guarantees guest VMCS is valid.
+    // setbe catches VMfailInvalid (CF) and VMfailValid (ZF); success never returns.
     unsafe {
         core::arch::asm!(
             "vmlaunch",
-            "setc {failed}",
+            "setbe {failed}",
             failed = lateout(reg_byte) failed,
             options(nostack),
         );
     }
-    if failed != 0 {
+    if vmx_failed(failed) {
         return Err(VmxError::VmlaunchFailed);
     }
     Ok(())
@@ -218,12 +233,12 @@ unsafe fn vmresume_impl() -> Result<(), VmxError> {
     unsafe {
         core::arch::asm!(
             "vmresume",
-            "setc {failed}",
+            "setbe {failed}",
             failed = lateout(reg_byte) failed,
             options(nostack),
         );
     }
-    if failed != 0 {
+    if vmx_failed(failed) {
         return Err(VmxError::VmresumeFailed);
     }
     Ok(())

@@ -95,9 +95,9 @@ qemu:
     cpus: 4
     cores: 4
     threads: 1
-  memory_mib: 4096
+  memory_mib: 8192
   accel: tcg
-  ovmf: /opt/OVMF/OVMF_CODE.fd
+  ovmf: /usr/share/qemu/OVMF.fd
   netdevs:
     - id: net0
       kind: user

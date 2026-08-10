@@ -39,6 +39,8 @@ pub unsafe extern "C" fn hypster_entry(boot_info: *const BootInfo) -> ! {
                     core::hint::unreachable_unchecked();
                 }
                 serial::write_str("hypster: vmlaunch skipped\n");
+            } else {
+                serial::write_str("hypster: vmx not enabled\n");
             }
             datapath::run_steady_state_loop(&plans, report);
         }

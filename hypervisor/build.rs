@@ -141,6 +141,10 @@ fn render_gate_d_plans(platform: &StaticPlatformIR, plans: &GateDPlans) -> Strin
         "            vmxon_region_base: HostPhysAddr::new({}),\n",
         plans.gate_c.vmxon_region_base.raw()
     ));
+    out.push_str(&format!(
+        "            vmcs_region_base: HostPhysAddr::new({}),\n",
+        plans.gate_c.vmcs_region_base.raw()
+    ));
     out.push_str("            ept_root_hp_as: alloc::vec![],\n");
     out.push_str("        },\n");
     out.push_str("        ipc_channels: alloc::vec![");

@@ -18,14 +18,20 @@ pub const fn vmcs_field(width: u32, index: u32) -> u32 {
     (width << 13) | index
 }
 
-/// Host selector for the TR segment.
-pub const HOST_TR_SELECTOR: u32 = vmcs_field(VMCS_WIDTH_16, 0x0000);
-/// Host selector for the FS segment.
-pub const HOST_FS_SELECTOR: u32 = vmcs_field(VMCS_WIDTH_16, 0x0002);
-/// Host selector for the GS segment.
-pub const HOST_GS_SELECTOR: u32 = vmcs_field(VMCS_WIDTH_16, 0x0004);
-/// Host selector for the LDTR segment.
-pub const HOST_LDTR_SELECTOR: u32 = vmcs_field(VMCS_WIDTH_16, 0x0006);
+/// Host ES selector.
+pub const HOST_ES_SELECTOR: u32 = 0x0C00;
+/// Host CS selector.
+pub const HOST_CS_SELECTOR: u32 = 0x0C02;
+/// Host SS selector.
+pub const HOST_SS_SELECTOR: u32 = 0x0C04;
+/// Host DS selector.
+pub const HOST_DS_SELECTOR: u32 = 0x0C06;
+/// Host FS selector.
+pub const HOST_FS_SELECTOR: u32 = 0x0C08;
+/// Host GS selector.
+pub const HOST_GS_SELECTOR: u32 = 0x0C0A;
+/// Host TR selector.
+pub const HOST_TR_SELECTOR: u32 = 0x0C0C;
 
 /// Host CR0.
 pub const HOST_CR0: u32 = vmcs_field(VMCS_WIDTH_NATURAL, 0x6C00);
@@ -56,18 +62,113 @@ pub const HOST_RSP: u32 = vmcs_field(VMCS_WIDTH_NATURAL, 0x6C14);
 /// Host RIP.
 pub const HOST_RIP: u32 = vmcs_field(VMCS_WIDTH_NATURAL, 0x6C16);
 
+/// Guest ES selector.
+pub const GUEST_ES_SELECTOR: u32 = 0x0800;
+/// Guest CS selector.
+pub const GUEST_CS_SELECTOR: u32 = 0x0802;
+/// Guest SS selector.
+pub const GUEST_SS_SELECTOR: u32 = 0x0804;
+/// Guest DS selector.
+pub const GUEST_DS_SELECTOR: u32 = 0x0806;
+/// Guest FS selector.
+pub const GUEST_FS_SELECTOR: u32 = 0x0808;
+/// Guest GS selector.
+pub const GUEST_GS_SELECTOR: u32 = 0x080A;
+/// Guest LDTR selector.
+pub const GUEST_LDTR_SELECTOR: u32 = 0x080C;
+/// Guest TR selector.
+pub const GUEST_TR_SELECTOR: u32 = 0x080E;
+
 /// Guest CR0.
 pub const GUEST_CR0: u32 = vmcs_field(VMCS_WIDTH_NATURAL, 0x6800);
 /// Guest CR3.
 pub const GUEST_CR3: u32 = vmcs_field(VMCS_WIDTH_NATURAL, 0x6802);
 /// Guest CR4.
 pub const GUEST_CR4: u32 = vmcs_field(VMCS_WIDTH_NATURAL, 0x6804);
+/// Guest ES base.
+pub const GUEST_ES_BASE: u32 = 0x6806;
+/// Guest CS base.
+pub const GUEST_CS_BASE: u32 = 0x6808;
+/// Guest SS base.
+pub const GUEST_SS_BASE: u32 = 0x680A;
+/// Guest DS base.
+pub const GUEST_DS_BASE: u32 = 0x680C;
+/// Guest FS base.
+pub const GUEST_FS_BASE: u32 = 0x680E;
+/// Guest GS base.
+pub const GUEST_GS_BASE: u32 = 0x6810;
+/// Guest LDTR base.
+pub const GUEST_LDTR_BASE: u32 = 0x6812;
+/// Guest TR base.
+pub const GUEST_TR_BASE: u32 = 0x6814;
+/// Guest GDTR base.
+pub const GUEST_GDTR_BASE: u32 = 0x6816;
+/// Guest IDTR base.
+pub const GUEST_IDTR_BASE: u32 = 0x6818;
+/// Guest DR7.
+pub const GUEST_DR7: u32 = 0x681A;
 /// Guest RSP.
 pub const GUEST_RSP: u32 = vmcs_field(VMCS_WIDTH_NATURAL, 0x681C);
 /// Guest RIP.
 pub const GUEST_RIP: u32 = vmcs_field(VMCS_WIDTH_NATURAL, 0x681E);
 /// Guest RFLAGS.
 pub const GUEST_RFLAGS: u32 = vmcs_field(VMCS_WIDTH_NATURAL, 0x6820);
+/// Guest pending debug exceptions.
+pub const GUEST_PENDING_DBG_EXCEPTIONS: u32 = 0x6822;
+/// Guest IA32_SYSENTER_ESP.
+pub const GUEST_SYSENTER_ESP: u32 = 0x6824;
+/// Guest IA32_SYSENTER_EIP.
+pub const GUEST_SYSENTER_EIP: u32 = 0x6826;
+/// Guest ES limit.
+pub const GUEST_ES_LIMIT: u32 = 0x4800;
+/// Guest CS limit.
+pub const GUEST_CS_LIMIT: u32 = 0x4802;
+/// Guest SS limit.
+pub const GUEST_SS_LIMIT: u32 = 0x4804;
+/// Guest DS limit.
+pub const GUEST_DS_LIMIT: u32 = 0x4806;
+/// Guest FS limit.
+pub const GUEST_FS_LIMIT: u32 = 0x4808;
+/// Guest GS limit.
+pub const GUEST_GS_LIMIT: u32 = 0x480A;
+/// Guest LDTR limit.
+pub const GUEST_LDTR_LIMIT: u32 = 0x480C;
+/// Guest TR limit.
+pub const GUEST_TR_LIMIT: u32 = 0x480E;
+/// Guest GDTR limit.
+pub const GUEST_GDTR_LIMIT: u32 = 0x4810;
+/// Guest IDTR limit.
+pub const GUEST_IDTR_LIMIT: u32 = 0x4812;
+/// Guest ES access rights.
+pub const GUEST_ES_AR_BYTES: u32 = 0x4814;
+/// Guest CS access rights.
+pub const GUEST_CS_AR_BYTES: u32 = 0x4816;
+/// Guest SS access rights.
+pub const GUEST_SS_AR_BYTES: u32 = 0x4818;
+/// Guest DS access rights.
+pub const GUEST_DS_AR_BYTES: u32 = 0x481A;
+/// Guest FS access rights.
+pub const GUEST_FS_AR_BYTES: u32 = 0x481C;
+/// Guest GS access rights.
+pub const GUEST_GS_AR_BYTES: u32 = 0x481E;
+/// Guest LDTR access rights.
+pub const GUEST_LDTR_AR_BYTES: u32 = 0x4820;
+/// Guest TR access rights.
+pub const GUEST_TR_AR_BYTES: u32 = 0x4822;
+/// Guest interruptibility state.
+pub const GUEST_INTERRUPTIBILITY_STATE: u32 = 0x4824;
+/// Guest activity state.
+pub const GUEST_ACTIVITY_STATE: u32 = 0x4826;
+/// Guest IA32_SYSENTER_CS.
+pub const GUEST_SYSENTER_CS: u32 = 0x482A;
+/// Guest IA32_DEBUGCTL.
+pub const GUEST_IA32_DEBUGCTL: u32 = 0x2802;
+/// Guest IA32_EFER.
+pub const GUEST_IA32_EFER: u32 = 0x2806;
+/// Host IA32_EFER.
+pub const HOST_IA32_EFER: u32 = 0x2C02;
+/// MSR bitmap address.
+pub const MSR_BITMAP: u32 = 0x2004;
 
 /// VMCS link pointer (64-bit).
 pub const VMCS_LINK_POINTER: u32 = vmcs_field(VMCS_WIDTH_64, 0x2800);
@@ -75,15 +176,17 @@ pub const VMCS_LINK_POINTER: u32 = vmcs_field(VMCS_WIDTH_64, 0x2800);
 pub const EPT_POINTER: u32 = vmcs_field(VMCS_WIDTH_64, 0x201A);
 
 /// Pin-based VM execution controls.
-pub const PIN_BASED_VM_EXEC_CONTROL: u32 = vmcs_field(VMCS_WIDTH_32, 0x4000);
+pub const PIN_BASED_VM_EXEC_CONTROL: u32 = 0x4000;
 /// Primary processor-based VM execution controls.
-pub const PROC_BASED_VM_EXEC_CONTROL: u32 = vmcs_field(VMCS_WIDTH_32, 0x401E);
+pub const PROC_BASED_VM_EXEC_CONTROL: u32 = 0x4002;
 /// Secondary processor-based VM execution controls.
-pub const SECONDARY_PROC_BASED_VM_EXEC_CONTROL: u32 = vmcs_field(VMCS_WIDTH_32, 0x401B);
+pub const SECONDARY_PROC_BASED_VM_EXEC_CONTROL: u32 = 0x401E;
 /// VM-exit controls.
-pub const VM_EXIT_CONTROLS: u32 = vmcs_field(VMCS_WIDTH_32, 0x400C);
+pub const VM_EXIT_CONTROLS: u32 = 0x400C;
 /// VM-entry controls.
-pub const VM_ENTRY_CONTROLS: u32 = vmcs_field(VMCS_WIDTH_32, 0x4012);
+pub const VM_ENTRY_CONTROLS: u32 = 0x4012;
+/// VM-instruction error (valid after VMfailValid).
+pub const VM_INSTRUCTION_ERROR: u32 = 0x4400;
 /// VM-exit reason.
 pub const VM_EXIT_REASON: u32 = vmcs_field(VMCS_WIDTH_32, 0x4402);
 /// VM-exit instruction length.

@@ -1,7 +1,7 @@
 //! Gate D partition preparation and IPC ring initialization.
 
 use hv_config_model::hash::ConfigHash;
-use hv_ipc::{init_ring, IpcError};
+use hv_ipc::{init_ring, ipc_mapping_bytes, IpcError};
 use hv_types::HostPhysAddr;
 
 use crate::error::RuntimeError;
@@ -74,7 +74,8 @@ pub fn assign_ipc_host_backing(
     let mut offset = 0usize;
     for channel in &mut plans.ipc_channels {
         let size = ring_backing_bytes(channel)?;
-        let end = offset.checked_add(size).ok_or(IpcError::Overflow)?;
+        let stride = ipc_mapping_bytes(size as u64).map_err(RuntimeError::Ipc)? as usize;
+        let end = offset.checked_add(stride).ok_or(IpcError::Overflow)?;
         if end > backing.len() {
             return Err(RuntimeError::Ipc(IpcError::BufferTooSmall));
         }
@@ -166,7 +167,7 @@ mod tests {
     #[test]
     fn assign_ipc_host_backing_patches_ept_ipc_mappings() {
         let planned = HostPhysAddr::new(0x5000_0000);
-        let mut backing = vec![0u8; 524_328];
+        let mut backing = vec![0u8; 528_384];
         let mut plans = GateDPlans {
             gate_c: GateCPlans {
                 ept: EptPlan {
@@ -206,6 +207,7 @@ mod tests {
                 ept_table_base: HostPhysAddr::new(0x1_1510_0000),
                 vtd_table_base: HostPhysAddr::new(0x1_1610_0000),
                 vmxon_region_base: HostPhysAddr::new(0x1_1710_0000),
+                vmcs_region_base: HostPhysAddr::new(0x1_1800_0000),
                 ept_root_hp_as: vec![],
             },
             ipc_channels: vec![IpcChannelPlan {
