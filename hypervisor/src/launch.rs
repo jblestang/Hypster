@@ -4,8 +4,8 @@
 
 use hv_runtime::{
     capture_host_launch_context, dispatch_in_guest_vmexit, inject_inbound_payload,
-    launch_plan_for_vm, resume_guest, stage_guest_image, vmlaunch_guest, ChannelBacking,
-    GateDInitReport, GateDPlans, MmioDispatch, RuntimeError,
+    launch_plan_for_vm, resume_guest, stage_guest_image, verify_mid_launch_relay, vmlaunch_guest,
+    ChannelBacking, GateDInitReport, GateDPlans, MmioDispatch, RuntimeError,
 };
 use hv_types::VmId;
 use hv_vmx::VmxCapabilities;
@@ -92,10 +92,16 @@ extern "C" fn vmexit_dispatch() -> ! {
         };
 
         match unsafe { dispatch_in_guest_vmexit(dispatch) } {
-            Ok(true) => {
-                serial::write_str("hypster: guest mid ok\n");
-                run_datapath_from_stash();
-            }
+            Ok(true) => match verify_mid_guest_relay() {
+                Ok(()) => {
+                    serial::write_str("hypster: guest mid ok\n");
+                    run_datapath_from_stash();
+                }
+                Err(()) => {
+                    serial::write_str("hypster: guest mid relay fail\n");
+                    halt_forever();
+                }
+            },
             Ok(false) => match unsafe { resume_guest() } {
                 Ok(()) => {}
                 Err(_) => {
@@ -129,6 +135,17 @@ fn run_datapath_from_stash() -> ! {
         MID_MMIO = None;
         datapath::run_steady_state_loop(&*stash.plans, stash.report);
     }
+}
+
+fn verify_mid_guest_relay() -> Result<(), ()> {
+    // SAFETY: stash is set before VMLAUNCH and `plans` outlives this VM-exit handler.
+    let stash = unsafe { LAUNCH_STASH.as_ref() };
+    let Some(stash) = stash else {
+        return Err(());
+    };
+    verify_mid_launch_relay(unsafe { &*stash.plans }, MID_LAUNCH_PAYLOAD)
+        .map(|_| ())
+        .map_err(|_| ())
 }
 
 fn inject_mid_launch_frame(plans: &GateDPlans) -> Result<(), RuntimeError> {

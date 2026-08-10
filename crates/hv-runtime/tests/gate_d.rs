@@ -276,6 +276,81 @@ fn gate_d_mmio_dispatch_covers_e1000_mappings() {
 }
 
 #[test]
+fn gate_d_mid_launch_relay_verification() {
+    use hv_ipc::compute_shared_bytes;
+    use hv_runtime::{inject_inbound_payload, run_datapath_step, verify_mid_launch_relay, ChannelBacking, DatapathChannels};
+
+    const PAYLOAD: &[u8] = b"vmx-mid-relay";
+
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../configs/qemu.yaml");
+    let raw = read_yaml_file(path).expect("read config");
+    let compiled = compile_config(raw).expect("compile config");
+    let observed = qemu_validation_observed().expect("fixture");
+    let platform = resolve_platform(&compiled.intent, &observed).expect("resolve");
+    let mut plans = gate_d_plans_from_resolved(&platform);
+
+    let total_backing: usize = plans
+        .ipc_channels
+        .iter()
+        .map(|channel| {
+            compute_shared_bytes(channel.slot_count, channel.slot_size).expect("ring bytes")
+                as usize
+        })
+        .sum();
+    let mut ipc_backing = vec![0u8; total_backing];
+    assign_ipc_host_backing(&mut plans, &mut ipc_backing).expect("assign backing");
+    for channel in &plans.ipc_channels {
+        let ptr = channel.host_base.raw() as *mut u8;
+        let slice = unsafe { core::slice::from_raw_parts_mut(ptr, channel.shared_bytes as usize) };
+        init_ring(slice, &channel.name, channel.slot_count, channel.slot_size).expect("init ring");
+    }
+
+    let in_channel = plans
+        .ipc_channels
+        .iter()
+        .find(|channel| channel.name == "in_to_mid")
+        .expect("in_to_mid");
+    let in_ptr = in_channel.host_base.raw() as *mut u8;
+    let in_slice =
+        unsafe { core::slice::from_raw_parts_mut(in_ptr, in_channel.shared_bytes as usize) };
+    let mut in_backing = ChannelBacking {
+        name: "in_to_mid",
+        backing: in_slice,
+        slot_count: in_channel.slot_count,
+        slot_size: in_channel.slot_size,
+    };
+    inject_inbound_payload(&mut in_backing, PAYLOAD).expect("inject");
+
+    let mid_channel = plans
+        .ipc_channels
+        .iter()
+        .find(|channel| channel.name == "mid_to_out")
+        .expect("mid_to_out");
+    let mid_ptr = mid_channel.host_base.raw() as *mut u8;
+    let mid_slice =
+        unsafe { core::slice::from_raw_parts_mut(mid_ptr, mid_channel.shared_bytes as usize) };
+    let mut channels = DatapathChannels {
+        in_to_mid: ChannelBacking {
+            name: "in_to_mid",
+            backing: in_slice,
+            slot_count: in_channel.slot_count,
+            slot_size: in_channel.slot_size,
+        },
+        mid_to_out: ChannelBacking {
+            name: "mid_to_out",
+            backing: mid_slice,
+            slot_count: mid_channel.slot_count,
+            slot_size: mid_channel.slot_size,
+        },
+    };
+    let step = run_datapath_step(&mut channels).expect("relay");
+    assert_eq!(step.in_to_mid_frames, 1);
+
+    let len = verify_mid_launch_relay(&plans, PAYLOAD).expect("verify relay");
+    assert!(len >= PAYLOAD.len());
+}
+
+#[test]
 fn gate_d_elf_loader_places_segments_at_guest_phys_zero() {
     use hv_runtime::load_elf_into_guest_ram;
 
